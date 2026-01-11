@@ -242,3 +242,8 @@ func (s *RoleService) AssignPermissions(ctx context.Context, actor audit.Actor, 
 func (s *RoleService) IsSystemRole(ctx context.Context, roleID string) (bool, error) {
 	return s.roleRepo.IsSystemRole(ctx, roleID)
 }
+
+// GetRolePermissions retrieves permissions for a role.
+func (s *RoleService) GetRolePermissions(ctx context.Context, roleID string) ([]entity.Permission, error) {
+	return s.roleRepo.GetPermissionsByRoleID(ctx, roleID)
+}

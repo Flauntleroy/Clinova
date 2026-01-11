@@ -89,6 +89,28 @@ Kemudian **logout dan login ulang** agar permission ter-refresh.
 
 ---
 
+## 4. User Management API Return 500 Internal Server Error
+
+**Tanggal**: 2026-01-11
+
+**Gejala**:
+- Mengakses `/admin/users` return 500 Internal Server Error
+- Frontend menampilkan "Failed to fetch users"
+
+**Penyebab**:
+Query SQL di `user_repository.go` menggunakan `WHERE deleted_at IS NULL` tapi kolom `deleted_at` belum ada di tabel `users`.
+
+**Solusi**:
+Jalankan migration:
+```sql
+ALTER TABLE users ADD COLUMN deleted_at TIMESTAMP NULL DEFAULT NULL;
+CREATE INDEX idx_users_deleted_at ON users (deleted_at);
+```
+
+Atau run file `migrations/004_add_deleted_at_users.sql`.
+
+---
+
 ## Template untuk Issue Baru
 
 ```markdown

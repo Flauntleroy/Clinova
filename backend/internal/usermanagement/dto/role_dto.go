@@ -20,11 +20,12 @@ type AssignRolePermissionsRequest struct {
 
 // RoleResponse represents a role in response.
 type RoleResponse struct {
-	ID          string            `json:"id"`
-	Name        string            `json:"name"`
-	Description string            `json:"description,omitempty"`
-	IsSystem    bool              `json:"is_system"`
-	Permissions []PermissionBrief `json:"permissions,omitempty"`
+	ID              string            `json:"id"`
+	Name            string            `json:"name"`
+	Description     string            `json:"description,omitempty"`
+	IsSystem        bool              `json:"is_system"`
+	PermissionCount int               `json:"permission_count"`
+	Permissions     []PermissionBrief `json:"permissions,omitempty"`
 }
 
 // PermissionBrief is a brief permission info.

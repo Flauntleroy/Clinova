@@ -64,11 +64,14 @@ func (h *RoleHandler) GetRoles(c *gin.Context) {
 	roleResponses := make([]dto.RoleResponse, len(roles))
 	for i, r := range roles {
 		isSystem, _ := h.roleService.IsSystemRole(c.Request.Context(), r.ID)
+		// Get permission count
+		perms, _ := h.roleService.GetRolePermissions(c.Request.Context(), r.ID)
 		roleResponses[i] = dto.RoleResponse{
-			ID:          r.ID,
-			Name:        r.Name,
-			Description: r.Description,
-			IsSystem:    isSystem,
+			ID:              r.ID,
+			Name:            r.Name,
+			Description:     r.Description,
+			IsSystem:        isSystem,
+			PermissionCount: len(perms),
 		}
 	}
 

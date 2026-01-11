@@ -98,8 +98,8 @@ export const TokenStorage = {
     },
 };
 
-// API Helper
-async function apiRequest<T>(
+// API Helper - exported for use in other services
+export async function apiRequest<T>(
     url: string,
     options: RequestInit = {}
 ): Promise<T> {

@@ -1,9 +1,11 @@
 import PageMeta from "../../components/common/PageMeta";
 import { useState, useEffect } from "react";
 import { authService, SessionItem } from "../../services/authService";
+import { useUI } from "../../context/UIContext";
 import Button from "../../components/ui/button/Button";
 
 export default function Sessions() {
+    const { confirm, toast } = useUI();
     const [sessions, setSessions] = useState<SessionItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -26,9 +28,13 @@ export default function Sessions() {
 
     const handleRevoke = async (sessionId: string, isCurrent: boolean) => {
         if (isCurrent) {
-            if (!confirm("This will log you out. Continue?")) {
-                return;
-            }
+            const confirmed = await confirm("Sesi ini akan logout. Lanjutkan?", {
+                title: "Logout Sesi",
+                variant: "warning",
+                confirmText: "Ya, Logout",
+                cancelText: "Batal",
+            });
+            if (!confirmed) return;
         }
 
         try {
@@ -37,10 +43,11 @@ export default function Sessions() {
                 await authService.logout();
                 window.location.href = "/signin";
             } else {
+                toast("Sesi berhasil dicabut", { type: "success" });
                 loadSessions();
             }
         } catch {
-            setError("Failed to revoke session");
+            toast("Gagal mencabut sesi", { type: "error" });
         }
     };
 
@@ -84,8 +91,8 @@ export default function Sessions() {
                             <div
                                 key={session.id}
                                 className={`p-4 border rounded-lg ${session.is_current
-                                        ? "border-brand-500 bg-brand-50 dark:bg-brand-900/10"
-                                        : "border-gray-200 dark:border-gray-700"
+                                    ? "border-brand-500 bg-brand-50 dark:bg-brand-900/10"
+                                    : "border-gray-200 dark:border-gray-700"
                                     }`}
                             >
                                 <div className="flex items-start justify-between">

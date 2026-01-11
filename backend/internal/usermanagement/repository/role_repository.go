@@ -126,7 +126,7 @@ func (r *MySQLRoleRepository) Delete(ctx context.Context, id string) error {
 }
 
 func (r *MySQLRoleRepository) IsSystemRole(ctx context.Context, id string) (bool, error) {
-	// System roles: admin, doctor, nurse, billing (by name)
+	// Only admin is a system role (protected from deletion)
 	query := `SELECT name FROM roles WHERE id = ?`
 	var name string
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&name)
@@ -136,8 +136,8 @@ func (r *MySQLRoleRepository) IsSystemRole(ctx context.Context, id string) (bool
 	if err != nil {
 		return false, err
 	}
-	systemRoles := map[string]bool{"admin": true, "doctor": true, "nurse": true, "billing": true}
-	return systemRoles[name], nil
+	// Only admin role is protected
+	return name == "admin", nil
 }
 
 func (r *MySQLRoleRepository) GetPermissionsByRoleID(ctx context.Context, roleID string) ([]entity.Permission, error) {
