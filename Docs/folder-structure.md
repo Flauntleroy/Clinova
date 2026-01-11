@@ -10,8 +10,7 @@ Dokumentasi struktur folder untuk SIMRS project.
 SIMRS/
 ├── backend/          # Go backend server
 ├── Frontend/         # React frontend app
-├── Docs/             # Documentation
-└── migrations/       # (Legacy - moved to backend/migrations)
+└── Docs/             # All documentation (backend + frontend)
 ```
 
 ---

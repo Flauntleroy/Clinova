@@ -3,12 +3,14 @@ package main
 
 import (
 	"log"
+	"path/filepath"
 
 	"github.com/clinova/simrs/backend/internal/auth/handler"
 	"github.com/clinova/simrs/backend/internal/auth/repository"
 	"github.com/clinova/simrs/backend/internal/auth/service"
 	"github.com/clinova/simrs/backend/internal/common/config"
 	"github.com/clinova/simrs/backend/internal/common/database"
+	"github.com/clinova/simrs/backend/pkg/audit"
 	"github.com/clinova/simrs/backend/pkg/jwt"
 	"github.com/clinova/simrs/backend/pkg/password"
 )
@@ -27,6 +29,15 @@ func main() {
 
 	log.Println("Connected to database:", cfg.Database.DBName)
 
+	// Initialize audit logger
+	auditLogPath := filepath.Join("storage", "logs", "audit")
+	auditLogger, err := audit.NewLogger(auditLogPath)
+	if err != nil {
+		log.Fatalf("Failed to initialize audit logger: %v", err)
+	}
+	defer auditLogger.Close()
+	log.Println("Audit logger initialized:", auditLogPath)
+
 	// Initialize repositories
 	userRepo := repository.NewMySQLUserRepository(db)
 	roleRepo := repository.NewMySQLRoleRepository(db)
@@ -39,9 +50,9 @@ func main() {
 	jwtManager := jwt.NewManager(cfg.JWT.Secret, cfg.JWT.AccessTokenExpiry, cfg.JWT.RefreshTokenExpiry)
 	passwordHasher := password.NewHasher(cfg.Bcrypt.Cost)
 
-	// Initialize services
-	authService := service.NewAuthService(userRepo, sessionRepo, permissionRepo, jwtManager, passwordHasher)
-	sessionService := service.NewSessionService(sessionRepo, userRepo)
+	// Initialize services (with audit logger)
+	authService := service.NewAuthService(userRepo, sessionRepo, permissionRepo, jwtManager, passwordHasher, auditLogger)
+	sessionService := service.NewSessionService(sessionRepo, userRepo, auditLogger)
 	permissionService := service.NewPermissionService(permissionRepo, userRepo)
 
 	// Initialize router

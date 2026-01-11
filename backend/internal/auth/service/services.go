@@ -4,6 +4,8 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
 	"sync"
 	"time"
 
@@ -11,6 +13,7 @@ import (
 
 	"github.com/clinova/simrs/backend/internal/auth/entity"
 	"github.com/clinova/simrs/backend/internal/auth/repository"
+	"github.com/clinova/simrs/backend/pkg/audit"
 	"github.com/clinova/simrs/backend/pkg/jwt"
 	"github.com/clinova/simrs/backend/pkg/password"
 )
@@ -31,6 +34,7 @@ type AuthService struct {
 	permissionRepo repository.PermissionRepository
 	jwtManager     *jwt.Manager
 	passwordHasher *password.Hasher
+	auditLogger    *audit.Logger
 }
 
 func NewAuthService(
@@ -39,6 +43,7 @@ func NewAuthService(
 	permissionRepo repository.PermissionRepository,
 	jwtManager *jwt.Manager,
 	passwordHasher *password.Hasher,
+	auditLogger *audit.Logger,
 ) *AuthService {
 	return &AuthService{
 		userRepo:       userRepo,
@@ -46,6 +51,7 @@ func NewAuthService(
 		permissionRepo: permissionRepo,
 		jwtManager:     jwtManager,
 		passwordHasher: passwordHasher,
+		auditLogger:    auditLogger,
 	}
 }
 
@@ -123,7 +129,7 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 		}
 	}
 
-	return &LoginResponse{
+	result := &LoginResponse{
 		User: &UserInfo{
 			ID:          user.ID,
 			Username:    user.Username,
@@ -135,7 +141,32 @@ func (s *AuthService) Login(ctx context.Context, req *LoginRequest) (*LoginRespo
 		},
 		Tokens:    tokens,
 		SessionID: sessionID,
-	}, nil
+	}
+
+	// Audit log for login
+	if s.auditLogger != nil {
+		if err := s.auditLogger.LogInsert(audit.InsertParams{
+			Module: "auth",
+			Entity: audit.Entity{
+				Table:      "login_sessions",
+				PrimaryKey: map[string]string{"id": sessionID},
+			},
+			InsertedData: map[string]interface{}{
+				"id":          sessionID,
+				"user_id":     user.ID,
+				"device_info": req.DeviceInfo,
+				"ip_address":  req.IPAddress,
+			},
+			BusinessKey: user.Username,
+			Actor:       audit.Actor{UserID: user.ID, Username: user.Username},
+			IP:          req.IPAddress,
+			Summary:     fmt.Sprintf("Pengguna %s berhasil login dari IP %s", user.Username, req.IPAddress),
+		}); err != nil {
+			log.Printf("Gagal menulis audit log login: %v", err)
+		}
+	}
+
+	return result, nil
 }
 
 func (s *AuthService) Logout(ctx context.Context, sessionID string) error {
@@ -312,10 +343,11 @@ func (s *PermissionService) GetUserWithPermissions(ctx context.Context, cache *P
 type SessionService struct {
 	sessionRepo repository.SessionRepository
 	userRepo    repository.UserRepository
+	auditLogger *audit.Logger
 }
 
-func NewSessionService(sessionRepo repository.SessionRepository, userRepo repository.UserRepository) *SessionService {
-	return &SessionService{sessionRepo: sessionRepo, userRepo: userRepo}
+func NewSessionService(sessionRepo repository.SessionRepository, userRepo repository.UserRepository, auditLogger *audit.Logger) *SessionService {
+	return &SessionService{sessionRepo: sessionRepo, userRepo: userRepo, auditLogger: auditLogger}
 }
 
 func (s *SessionService) GetUserSessions(ctx context.Context, userID string) ([]entity.LoginSession, error) {
@@ -337,7 +369,41 @@ func (s *SessionService) RevokeSession(ctx context.Context, requestingUserID, se
 	if session.UserID != requestingUserID && !isAdmin {
 		return ErrSessionNotFound
 	}
-	return s.sessionRepo.Revoke(ctx, sessionID)
+
+	if err := s.sessionRepo.Revoke(ctx, sessionID); err != nil {
+		return err
+	}
+
+	// Audit log for session revocation
+	if s.auditLogger != nil {
+		reqUser, _ := s.userRepo.GetByID(ctx, requestingUserID)
+		username := "unknown"
+		if reqUser != nil {
+			username = reqUser.Username
+		}
+
+		if err := s.auditLogger.LogDelete(audit.DeleteParams{
+			Module: "auth",
+			Entity: audit.Entity{
+				Table:      "login_sessions",
+				PrimaryKey: map[string]string{"id": sessionID},
+			},
+			DeletedData: map[string]interface{}{
+				"id":          sessionID,
+				"user_id":     session.UserID,
+				"device_info": session.DeviceInfo,
+			},
+			Where:       map[string]interface{}{"id": sessionID},
+			BusinessKey: sessionID,
+			Actor:       audit.Actor{UserID: requestingUserID, Username: username},
+			IP:          session.IPAddress,
+			Summary:     fmt.Sprintf("Sesi login %s dibatalkan oleh %s", sessionID[:8], username),
+		}); err != nil {
+			log.Printf("Gagal menulis audit log revoke session: %v", err)
+		}
+	}
+
+	return nil
 }
 
 func (s *SessionService) UpdateSessionActivity(ctx context.Context, sessionID string) error {
