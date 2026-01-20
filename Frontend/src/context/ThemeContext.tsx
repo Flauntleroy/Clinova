@@ -1,7 +1,8 @@
 "use client";
 
 import type React from "react";
-import { createContext, useState, useContext, useEffect } from "react";
+import { createContext, useContext, useCallback } from "react";
+import { useAppearance } from "./AppearanceContext";
 
 type Theme = "light" | "dark";
 
@@ -15,32 +16,14 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [theme, setTheme] = useState<Theme>("light");
-  const [isInitialized, setIsInitialized] = useState(false);
+  // Sync with AppearanceContext
+  const { appearance, updateAppearance } = useAppearance();
 
-  useEffect(() => {
-    // This code will only run on the client side
-    const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const initialTheme = savedTheme || "light"; // Default to light theme
+  const theme: Theme = appearance.mode;
 
-    setTheme(initialTheme);
-    setIsInitialized(true);
-  }, []);
-
-  useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem("theme", theme);
-      if (theme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-    }
-  }, [theme, isInitialized]);
-
-  const toggleTheme = () => {
-    setTheme((prevTheme) => (prevTheme === "light" ? "dark" : "light"));
-  };
+  const toggleTheme = useCallback(() => {
+    updateAppearance('mode', appearance.mode === 'light' ? 'dark' : 'light');
+  }, [appearance.mode, updateAppearance]);
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme }}>
