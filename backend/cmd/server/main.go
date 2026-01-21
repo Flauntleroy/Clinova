@@ -13,6 +13,7 @@ import (
 	"github.com/clinova/simrs/backend/internal/common/config"
 	"github.com/clinova/simrs/backend/internal/common/database"
 	usermgmtHandler "github.com/clinova/simrs/backend/internal/usermanagement/handler"
+	vedikaHandler "github.com/clinova/simrs/backend/internal/vedika/handler"
 	"github.com/clinova/simrs/backend/pkg/audit"
 	"github.com/clinova/simrs/backend/pkg/jwt"
 	"github.com/clinova/simrs/backend/pkg/password"
@@ -73,6 +74,10 @@ func main() {
 	auditlogRouter := auditlogHandler.NewRouter(auditLogPath, jwtMiddleware, permMiddleware)
 	auditlogRouter.RegisterRoutes(authRouter.GetEngine())
 
+	// Initialize Vedika router
+	vedikaRouter := vedikaHandler.NewRouter(db, auditLogger, jwtMiddleware, permMiddleware)
+	vedikaRouter.RegisterRoutes(authRouter.GetEngine(), permissionService)
+
 	// Start server
 	addr := ":" + cfg.Server.Port
 	log.Printf("Starting SIMRS Auth Service on %s", addr)
@@ -96,6 +101,16 @@ func main() {
 	log.Println("  Audit Logs:")
 	log.Println("    GET       /admin/audit-logs")
 	log.Println("    GET       /admin/audit-logs/:id")
+	log.Println("  Vedika (Claim Management):")
+	log.Println("    GET       /admin/vedika/dashboard")
+	log.Println("    GET       /admin/vedika/dashboard/trend")
+	log.Println("    GET       /admin/vedika/index")
+	log.Println("    GET       /admin/vedika/claim/:no_rawat")
+	log.Println("    POST      /admin/vedika/claim/:no_rawat/status")
+	log.Println("    POST      /admin/vedika/claim/:no_rawat/diagnosis")
+	log.Println("    POST      /admin/vedika/claim/:no_rawat/procedure")
+	log.Println("    POST      /admin/vedika/claim/:no_rawat/documents")
+	log.Println("    GET       /admin/vedika/claim/:no_rawat/resume")
 
 	if err := authRouter.Run(addr); err != nil {
 		log.Fatalf("Failed to start server: %v", err)

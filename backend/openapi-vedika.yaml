@@ -1,0 +1,761 @@
+openapi: 3.0.3
+info:
+  title: SIMRS MERA - Vedika API
+  description: |
+    API untuk modul Vedika (Verifikasi Digital Klaim BPJS).
+    
+    ## Autentikasi
+    Semua endpoint memerlukan Bearer token di header Authorization.
+    
+    ## Key Design
+    - **Dashboard**: Policy-driven (uses `active_period` from mera_settings)
+    - **Index Workbench**: Data-driven (uses explicit date_from + date_to filter)
+    
+    ## Permissions
+    - `vedika.read` - Dashboard + list index
+    - `vedika.claim.read` - View claim detail
+    - `vedika.claim.update_status` - Update claim status
+    - `vedika.claim.edit_medical_data` - Edit diagnosis/procedure
+    - `vedika.claim.upload_document` - Upload documents
+    - `vedika.claim.read_resume` - View medical resume
+  version: 2.0.0
+  contact:
+    name: SIMRS MERA Team
+
+servers:
+  - url: http://localhost:8080
+    description: Development server
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Dashboard
+    description: Dashboard endpoints (policy-driven, uses active_period)
+  - name: Index
+    description: Index Workbench endpoints (data-driven, uses date range)
+  - name: Claim
+    description: Claim detail and mutation endpoints
+
+paths:
+  # ========================
+  # DASHBOARD (Policy-driven)
+  # ========================
+  /admin/vedika/dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard summary
+      description: Returns summary cards with rencana, pengajuan, and maturasi counts. Uses active_period from mera_settings.
+      operationId: getDashboard
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          $ref: '#/components/responses/SettingsMissing'
+
+  /admin/vedika/dashboard/trend:
+    get:
+      tags: [Dashboard]
+      summary: Get dashboard trend data
+      description: Returns daily aggregation data for charts
+      operationId: getDashboardTrend
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrendResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/SettingsMissing'
+
+  # ========================
+  # INDEX WORKBENCH (Data-driven)
+  # ========================
+  /admin/vedika/index:
+    get:
+      tags: [Index]
+      summary: List claims by date range and status
+      description: |
+        Lists claim episodes filtered by explicit date range.
+        **Does NOT use active_period** - uses date_from and date_to instead.
+        
+        Status values:
+        - RENCANA: Episode eligible but NOT in mlite_vedika
+        - PENGAJUAN: Already in mlite_vedika
+        - PERBAIKAN: Returned for correction
+        - LENGKAP: Complete
+        - SETUJU: Approved
+      operationId: listIndex
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-01-01"
+          description: Start date (YYYY-MM-DD)
+        - name: date_to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+            example: "2026-01-31"
+          description: End date (YYYY-MM-DD)
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+          description: Claim status filter
+        - $ref: '#/components/parameters/Jenis'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
+        - $ref: '#/components/parameters/Search'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndexListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  # ========================
+  # CLAIM ENDPOINTS
+  # ========================
+  /admin/vedika/claim/{no_rawat}:
+    get:
+      tags: [Claim]
+      summary: Get claim detail
+      description: Returns full claim context including diagnoses, procedures, and documents
+      operationId: getClaimDetail
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClaimDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/vedika/claim/{no_rawat}/status:
+    post:
+      tags: [Claim]
+      summary: Update claim status
+      description: Updates or creates claim status in mlite_vedika
+      operationId: updateClaimStatus
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/diagnosis:
+    post:
+      tags: [Claim]
+      summary: Add or update diagnosis
+      description: Adds or updates diagnosis for a claim episode
+      operationId: updateDiagnosis
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DiagnosisUpdateRequest'
+      responses:
+        '200':
+          description: Diagnosis updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/procedure:
+    post:
+      tags: [Claim]
+      summary: Add or update procedure
+      description: Adds or updates procedure for a claim episode
+      operationId: updateProcedure
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcedureUpdateRequest'
+      responses:
+        '200':
+          description: Procedure updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/documents:
+    post:
+      tags: [Claim]
+      summary: Upload supporting documents
+      description: Uploads nursing or supporting documents for a claim
+      operationId: uploadDocument
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kategori:
+                  type: string
+                  description: Document category
+      responses:
+        '200':
+          description: Document uploaded successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessMessageResponse'
+        '501':
+          description: Not yet implemented
+
+  /admin/vedika/claim/{no_rawat}/resume:
+    get:
+      tags: [Claim]
+      summary: Get medical resume
+      description: Returns medical resume for a claim (read-only)
+      operationId: getResume
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/NoRawat'
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResumeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    NoRawat:
+      name: no_rawat
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Episode ID (URL encoded, e.g., 2026%2F01%2F01%2F000001)
+
+    Jenis:
+      name: jenis
+      in: query
+      schema:
+        type: string
+        enum: [ralan, ranap]
+        default: ralan
+      description: Service type (ralan=outpatient, ranap=inpatient)
+
+    Page:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number
+
+    Limit:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 10
+      description: Items per page
+
+    Search:
+      name: search
+      in: query
+      schema:
+        type: string
+      description: Search by patient name, no_rawat, or no_rkm_medis
+
+  schemas:
+    # Dashboard Schemas
+    DashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        data:
+          type: object
+          properties:
+            period:
+              type: string
+              example: "2026-01"
+            summary:
+              $ref: '#/components/schemas/DashboardSummary'
+
+    DashboardSummary:
+      type: object
+      properties:
+        period:
+          type: string
+          example: "2026-01"
+        rencana:
+          $ref: '#/components/schemas/ClaimCount'
+        pengajuan:
+          $ref: '#/components/schemas/ClaimCount'
+        maturasi:
+          $ref: '#/components/schemas/MaturasiPersen'
+
+    ClaimCount:
+      type: object
+      properties:
+        ralan:
+          type: integer
+          example: 150
+        ranap:
+          type: integer
+          example: 45
+
+    MaturasiPersen:
+      type: object
+      properties:
+        ralan:
+          type: number
+          format: float
+          example: 80.0
+        ranap:
+          type: number
+          format: float
+          example: 66.67
+
+    TrendResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            trend:
+              type: array
+              items:
+                $ref: '#/components/schemas/TrendItem'
+
+    TrendItem:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+          example: "2026-01-01"
+        rencana:
+          $ref: '#/components/schemas/ClaimCount'
+        pengajuan:
+          $ref: '#/components/schemas/ClaimCount'
+
+    # Index Schemas
+    IndexListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            filter:
+              type: object
+              properties:
+                date_from:
+                  type: string
+                  format: date
+                date_to:
+                  type: string
+                  format: date
+                status:
+                  type: string
+                jenis:
+                  type: string
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                limit:
+                  type: integer
+                total:
+                  type: integer
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/IndexEpisode'
+
+    IndexEpisode:
+      type: object
+      properties:
+        no_rawat:
+          type: string
+          example: "2026/01/01/000001"
+        no_rm:
+          type: string
+          example: "000001"
+        nama_pasien:
+          type: string
+          example: "Budi Santoso"
+        jenis:
+          type: string
+          enum: [ralan, ranap]
+        tgl_pelayanan:
+          type: string
+          format: date
+        unit:
+          type: string
+        dokter:
+          type: string
+        cara_bayar:
+          type: string
+        status:
+          type: string
+          enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+
+    # Claim Detail Schemas
+    ClaimDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/ClaimDetail'
+
+    ClaimDetail:
+      type: object
+      properties:
+        no_rawat:
+          type: string
+        no_rm:
+          type: string
+        nama_pasien:
+          type: string
+        umur:
+          type: string
+        jenis_kelamin:
+          type: string
+          enum: [L, P]
+        alamat:
+          type: string
+        jenis:
+          type: string
+          enum: [ralan, ranap]
+        tgl_registrasi:
+          type: string
+          format: date-time
+        tgl_keluar:
+          type: string
+          format: date-time
+          nullable: true
+        unit:
+          type: string
+        dokter:
+          type: string
+        cara_bayar:
+          type: string
+        no_sep:
+          type: string
+        no_kartu:
+          type: string
+        diagnoses:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiagnosisItem'
+        procedures:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcedureItem'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentItem'
+        status:
+          type: string
+          enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+
+    DiagnosisItem:
+      type: object
+      properties:
+        kode_penyakit:
+          type: string
+          example: "A01.0"
+        nama_penyakit:
+          type: string
+        status_dx:
+          type: string
+          enum: [Utama, Sekunder]
+        prioritas:
+          type: integer
+
+    ProcedureItem:
+      type: object
+      properties:
+        kode:
+          type: string
+          example: "99.25"
+        nama:
+          type: string
+        prioritas:
+          type: integer
+
+    DocumentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        nama:
+          type: string
+        kategori:
+          type: string
+        file_path:
+          type: string
+        upload_at:
+          type: string
+          format: date-time
+        upload_by:
+          type: string
+
+    # Resume Schema
+    ResumeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/MedicalResume'
+
+    MedicalResume:
+      type: object
+      properties:
+        no_rawat:
+          type: string
+        jenis:
+          type: string
+          enum: [ralan, ranap]
+        keluhan_utama:
+          type: string
+        pemeriksaan_fisik:
+          type: string
+        diagnosa_akhir:
+          type: string
+        terapi:
+          type: string
+        anjuran:
+          type: string
+        dokter_pj:
+          type: string
+
+    # Request Schemas
+    StatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+        catatan:
+          type: string
+          description: Optional feedback note
+
+    DiagnosisUpdateRequest:
+      type: object
+      required:
+        - kode_penyakit
+      properties:
+        kode_penyakit:
+          type: string
+          example: "A01.0"
+        status_dx:
+          type: string
+          enum: [Utama, Sekunder]
+          default: Sekunder
+        prioritas:
+          type: integer
+          default: 1
+
+    ProcedureUpdateRequest:
+      type: object
+      required:
+        - kode
+      properties:
+        kode:
+          type: string
+          example: "99.25"
+        prioritas:
+          type: integer
+          default: 1
+
+    # Response Schemas
+    SuccessMessageResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: true
+        message:
+          type: string
+        data:
+          type: object
+
+    ErrorResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          example: false
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INVALID_PARAMS
+              message: "date_from and date_to are required"
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: INVALID_TOKEN
+              message: Invalid or expired token
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: PERMISSION_DENIED
+              message: Missing required permission
+
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: NOT_FOUND
+              message: Claim not found
+
+    SettingsMissing:
+      description: Settings not configured
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VEDIKA_SETTINGS_MISSING
+              message: "Required setting 'active_period' is not configured"

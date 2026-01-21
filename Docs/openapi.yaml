@@ -15,7 +15,11 @@ info:
     - `usermanagement.read` - View users, roles, permissions
     - `usermanagement.write` - Create, update, delete users/roles
     - `auditlog.read` - View audit logs
-  version: 1.1.0
+    - `vedika.read` - Dashboard + list index
+    - `vedika.claim.read` - View claim detail
+    - `vedika.claim.update_status` - Update claim status
+    - `vedika.claim.edit_medical_data` - Edit diagnosis/procedure
+  version: 1.2.0
   contact:
     name: SIMRS Team
     
@@ -36,6 +40,12 @@ tags:
     description: Manage permissions (Admin only)
   - name: Audit Log
     description: View audit logs (Admin only)
+  - name: Vedika Dashboard
+    description: Vedika dashboard (policy-driven, uses active_period)
+  - name: Vedika Index
+    description: Vedika Index workbench (data-driven, uses date range)
+  - name: Vedika Claim
+    description: Vedika claim detail and mutations
 
 paths:
   /auth/login:
@@ -668,6 +678,253 @@ paths:
                       type: string
                     example: [auth, usermanagement, farmasi, billing]
 
+  # ========================
+  # VEDIKA ENDPOINTS
+  # ========================
+  /admin/vedika/dashboard:
+    get:
+      tags: [Vedika Dashboard]
+      summary: Get dashboard summary
+      description: Returns summary cards with rencana, pengajuan, and maturasi counts. Uses active_period from mera_settings.
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VedikaDashboardResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/SettingsMissing'
+
+  /admin/vedika/dashboard/trend:
+    get:
+      tags: [Vedika Dashboard]
+      summary: Get dashboard trend data
+      description: Returns daily aggregation data for charts
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/index:
+    get:
+      tags: [Vedika Index]
+      summary: List claims by date range and status
+      description: |
+        Lists claim episodes filtered by explicit date range.
+        **Does NOT use active_period** - uses date_from and date_to instead.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: date_from
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: Start date (YYYY-MM-DD)
+        - name: date_to
+          in: query
+          required: true
+          schema:
+            type: string
+            format: date
+          description: End date (YYYY-MM-DD)
+        - name: status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+          description: Claim status filter
+        - name: jenis
+          in: query
+          schema:
+            type: string
+            enum: [ralan, ranap]
+            default: ralan
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 10
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VedikaIndexListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}:
+    get:
+      tags: [Vedika Claim]
+      summary: Get claim detail
+      description: Returns full claim context including diagnoses, procedures, and documents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Episode ID (URL encoded)
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VedikaClaimDetailResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/vedika/claim/{no_rawat}/status:
+    post:
+      tags: [Vedika Claim]
+      summary: Update claim status
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VedikaStatusUpdateRequest'
+      responses:
+        '200':
+          description: Status updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/diagnosis:
+    post:
+      tags: [Vedika Claim]
+      summary: Add or update diagnosis
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VedikaDiagnosisUpdateRequest'
+      responses:
+        '200':
+          description: Diagnosis updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/procedure:
+    post:
+      tags: [Vedika Claim]
+      summary: Add or update procedure
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VedikaProcedureUpdateRequest'
+      responses:
+        '200':
+          description: Procedure updated
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /admin/vedika/claim/{no_rawat}/documents:
+    post:
+      tags: [Vedika Claim]
+      summary: Upload supporting documents
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                kategori:
+                  type: string
+      responses:
+        '200':
+          description: Document uploaded
+        '501':
+          description: Not yet implemented
+
+  /admin/vedika/claim/{no_rawat}/resume:
+    get:
+      tags: [Vedika Claim]
+      summary: Get medical resume
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: no_rawat
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VedikaResumeResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
 components:
   securitySchemes:
     bearerAuth:
@@ -700,6 +957,17 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/ErrorResponse'
+    SettingsMissing:
+      description: Settings not configured
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            success: false
+            error:
+              code: VEDIKA_SETTINGS_MISSING
+              message: Required setting not configured
 
   schemas:
     LoginRequest:
@@ -1201,6 +1469,246 @@ components:
                 - PERMISSION_DENIED
                 - VALIDATION_ERROR
                 - INTERNAL_ERROR
+                - VEDIKA_SETTINGS_MISSING
+                - INVALID_PARAMS
             message:
               type: string
 
+    # ========================
+    # VEDIKA SCHEMAS
+    # ========================
+    VedikaDashboardResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            period:
+              type: string
+              example: "2026-01"
+            summary:
+              type: object
+              properties:
+                rencana:
+                  $ref: '#/components/schemas/VedikaClaimCount'
+                pengajuan:
+                  $ref: '#/components/schemas/VedikaClaimCount'
+                maturasi:
+                  type: object
+                  properties:
+                    ralan:
+                      type: number
+                    ranap:
+                      type: number
+
+    VedikaClaimCount:
+      type: object
+      properties:
+        ralan:
+          type: integer
+        ranap:
+          type: integer
+
+    VedikaIndexListResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            filter:
+              type: object
+              properties:
+                date_from:
+                  type: string
+                date_to:
+                  type: string
+                status:
+                  type: string
+                jenis:
+                  type: string
+            pagination:
+              type: object
+              properties:
+                page:
+                  type: integer
+                limit:
+                  type: integer
+                total:
+                  type: integer
+            items:
+              type: array
+              items:
+                $ref: '#/components/schemas/VedikaIndexEpisode'
+
+    VedikaIndexEpisode:
+      type: object
+      properties:
+        no_rawat:
+          type: string
+        no_rm:
+          type: string
+        nama_pasien:
+          type: string
+        jenis:
+          type: string
+          enum: [ralan, ranap]
+        tgl_pelayanan:
+          type: string
+          format: date
+        unit:
+          type: string
+        dokter:
+          type: string
+        cara_bayar:
+          type: string
+        status:
+          type: string
+          enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+
+    VedikaClaimDetailResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          $ref: '#/components/schemas/VedikaClaimDetail'
+
+    VedikaClaimDetail:
+      type: object
+      properties:
+        no_rawat:
+          type: string
+        no_rm:
+          type: string
+        nama_pasien:
+          type: string
+        umur:
+          type: string
+        jenis_kelamin:
+          type: string
+        alamat:
+          type: string
+        jenis:
+          type: string
+        tgl_registrasi:
+          type: string
+          format: date-time
+        unit:
+          type: string
+        dokter:
+          type: string
+        cara_bayar:
+          type: string
+        no_sep:
+          type: string
+        diagnoses:
+          type: array
+          items:
+            $ref: '#/components/schemas/VedikaDiagnosisItem'
+        procedures:
+          type: array
+          items:
+            $ref: '#/components/schemas/VedikaProcedureItem'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/VedikaDocumentItem'
+        status:
+          type: string
+
+    VedikaDiagnosisItem:
+      type: object
+      properties:
+        kode_penyakit:
+          type: string
+        nama_penyakit:
+          type: string
+        status_dx:
+          type: string
+        prioritas:
+          type: integer
+
+    VedikaProcedureItem:
+      type: object
+      properties:
+        kode:
+          type: string
+        nama:
+          type: string
+        prioritas:
+          type: integer
+
+    VedikaDocumentItem:
+      type: object
+      properties:
+        id:
+          type: string
+        nama:
+          type: string
+        kategori:
+          type: string
+        file_path:
+          type: string
+
+    VedikaResumeResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            no_rawat:
+              type: string
+            jenis:
+              type: string
+            keluhan_utama:
+              type: string
+            pemeriksaan_fisik:
+              type: string
+            diagnosa_akhir:
+              type: string
+            terapi:
+              type: string
+            anjuran:
+              type: string
+            dokter_pj:
+              type: string
+
+    VedikaStatusUpdateRequest:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [RENCANA, PENGAJUAN, PERBAIKAN, LENGKAP, SETUJU]
+        catatan:
+          type: string
+
+    VedikaDiagnosisUpdateRequest:
+      type: object
+      required:
+        - kode_penyakit
+      properties:
+        kode_penyakit:
+          type: string
+        status_dx:
+          type: string
+          enum: [Utama, Sekunder]
+        prioritas:
+          type: integer
+
+    VedikaProcedureUpdateRequest:
+      type: object
+      required:
+        - kode
+      properties:
+        kode:
+          type: string
+        prioritas:
+          type: integer
