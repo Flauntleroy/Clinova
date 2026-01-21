@@ -3,6 +3,7 @@ package handler
 import (
 	"github.com/gin-gonic/gin"
 
+	"github.com/clinova/simrs/backend/internal/auth/handler/middleware"
 	"github.com/clinova/simrs/backend/internal/vedika/service"
 	"github.com/clinova/simrs/backend/pkg/audit"
 	"github.com/clinova/simrs/backend/pkg/response"
@@ -55,11 +56,7 @@ func (h *DashboardHandler) GetDashboardTrend(c *gin.Context) {
 
 // getActor extracts audit actor from gin context.
 func getActor(c *gin.Context) audit.Actor {
-	userID, _ := c.Get("user_id")
-	username, _ := c.Get("username")
-
-	return audit.Actor{
-		UserID:   userID.(string),
-		Username: username.(string),
-	}
+	userID := middleware.GetUserID(c)
+	// Use userID as username fallback (same pattern as usermanagement handlers)
+	return audit.Actor{UserID: userID, Username: userID}
 }

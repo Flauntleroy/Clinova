@@ -4,6 +4,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/clinova/simrs/backend/internal/vedika/entity"
 	"github.com/clinova/simrs/backend/internal/vedika/repository"
@@ -31,8 +32,9 @@ func NewDashboardService(
 }
 
 // GetDashboardSummary returns the dashboard summary with all counts and maturasi.
+// OPTIMIZED: Uses parallel execution for independent database queries.
 func (s *DashboardService) GetDashboardSummary(ctx context.Context, actor audit.Actor, ip string) (*entity.DashboardSummary, error) {
-	// Get required settings
+	// Get required settings (must be sequential as other queries depend on these)
 	period, err := s.settingsRepo.GetActivePeriod(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get active period: %w", err)
@@ -43,26 +45,59 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, actor audit.
 		return nil, fmt.Errorf("failed to get allowed carabayar: %w", err)
 	}
 
-	// Count rencana klaim
-	rencanaRalan, err := s.dashboardRepo.CountRencanaRalan(ctx, period, carabayar)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count rencana ralan: %w", err)
-	}
+	// Execute all count queries in parallel
+	var (
+		wg                sync.WaitGroup
+		rencanaRalan      int
+		rencanaRanap      int
+		pengajuanRalan    int
+		pengajuanRanap    int
+		errRencanaRalan   error
+		errRencanaRanap   error
+		errPengajuanRalan error
+		errPengajuanRanap error
+	)
 
-	rencanaRanap, err := s.dashboardRepo.CountRencanaRanap(ctx, period, carabayar)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count rencana ranap: %w", err)
-	}
+	wg.Add(4)
 
-	// Count pengajuan klaim
-	pengajuanRalan, err := s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRalan)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count pengajuan ralan: %w", err)
-	}
+	// Count rencana ralan
+	go func() {
+		defer wg.Done()
+		rencanaRalan, errRencanaRalan = s.dashboardRepo.CountRencanaRalan(ctx, period, carabayar)
+	}()
 
-	pengajuanRanap, err := s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRanap)
-	if err != nil {
-		return nil, fmt.Errorf("failed to count pengajuan ranap: %w", err)
+	// Count rencana ranap
+	go func() {
+		defer wg.Done()
+		rencanaRanap, errRencanaRanap = s.dashboardRepo.CountRencanaRanap(ctx, period, carabayar)
+	}()
+
+	// Count pengajuan ralan
+	go func() {
+		defer wg.Done()
+		pengajuanRalan, errPengajuanRalan = s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRalan)
+	}()
+
+	// Count pengajuan ranap
+	go func() {
+		defer wg.Done()
+		pengajuanRanap, errPengajuanRanap = s.dashboardRepo.CountPengajuanByJenis(ctx, period, entity.JenisRanap)
+	}()
+
+	wg.Wait()
+
+	// Check for errors
+	if errRencanaRalan != nil {
+		return nil, fmt.Errorf("failed to count rencana ralan: %w", errRencanaRalan)
+	}
+	if errRencanaRanap != nil {
+		return nil, fmt.Errorf("failed to count rencana ranap: %w", errRencanaRanap)
+	}
+	if errPengajuanRalan != nil {
+		return nil, fmt.Errorf("failed to count pengajuan ralan: %w", errPengajuanRalan)
+	}
+	if errPengajuanRanap != nil {
+		return nil, fmt.Errorf("failed to count pengajuan ranap: %w", errPengajuanRanap)
 	}
 
 	// Calculate maturasi
@@ -91,8 +126,8 @@ func (s *DashboardService) GetDashboardSummary(ctx context.Context, actor audit.
 		Maturasi: maturasi,
 	}
 
-	// Write audit log
-	s.auditLogger.LogInsert(audit.InsertParams{
+	// Write audit log (async, non-blocking)
+	go s.auditLogger.LogInsert(audit.InsertParams{
 		Module: "vedika",
 		Entity: audit.Entity{
 			Table:      "dashboard",

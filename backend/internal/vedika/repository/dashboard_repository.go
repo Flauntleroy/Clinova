@@ -51,6 +51,7 @@ func toInterfaceSlice(s []string) []interface{} {
 
 // CountRencanaRalan counts RALAN episodes not in mlite_vedika.
 // Uses reg_periksa.tgl_registrasi for period filtering.
+// OPTIMIZED: Uses LEFT JOIN instead of NOT IN subquery for better performance.
 func (r *MySQLDashboardRepository) CountRencanaRalan(ctx context.Context, period string, carabayar []string) (int, error) {
 	if len(carabayar) == 0 {
 		return 0, nil
@@ -59,11 +60,12 @@ func (r *MySQLDashboardRepository) CountRencanaRalan(ctx context.Context, period
 	query := fmt.Sprintf(`
 		SELECT COUNT(*) FROM reg_periksa rp
 		INNER JOIN penjab pj ON rp.kd_pj = pj.kd_pj
+		LEFT JOIN mlite_vedika mv ON rp.no_rawat = mv.no_rawat AND mv.jenis = '2'
 		WHERE pj.kd_pj IN (%s)
 		  AND DATE_FORMAT(rp.tgl_registrasi, '%%Y-%%m') = ?
 		  AND rp.status_lanjut = 'Ralan'
 		  AND rp.stts != 'Batal'
-		  AND rp.no_rawat NOT IN (SELECT no_rawat FROM mlite_vedika WHERE jenis = '2')
+		  AND mv.no_rawat IS NULL
 	`, buildPlaceholders(len(carabayar)))
 
 	args := append(toInterfaceSlice(carabayar), period)
@@ -78,6 +80,7 @@ func (r *MySQLDashboardRepository) CountRencanaRalan(ctx context.Context, period
 
 // CountRencanaRanap counts RANAP episodes not in mlite_vedika.
 // Uses kamar_inap.tgl_keluar for period filtering. Only includes discharged patients.
+// OPTIMIZED: Uses LEFT JOIN instead of NOT IN subquery for better performance.
 func (r *MySQLDashboardRepository) CountRencanaRanap(ctx context.Context, period string, carabayar []string) (int, error) {
 	if len(carabayar) == 0 {
 		return 0, nil
@@ -87,12 +90,13 @@ func (r *MySQLDashboardRepository) CountRencanaRanap(ctx context.Context, period
 		SELECT COUNT(DISTINCT rp.no_rawat) FROM reg_periksa rp
 		INNER JOIN penjab pj ON rp.kd_pj = pj.kd_pj
 		INNER JOIN kamar_inap ki ON rp.no_rawat = ki.no_rawat
+		LEFT JOIN mlite_vedika mv ON rp.no_rawat = mv.no_rawat AND mv.jenis = '1'
 		WHERE pj.kd_pj IN (%s)
 		  AND ki.tgl_keluar IS NOT NULL
 		  AND DATE_FORMAT(ki.tgl_keluar, '%%Y-%%m') = ?
 		  AND rp.status_lanjut = 'Ranap'
 		  AND rp.stts != 'Batal'
-		  AND rp.no_rawat NOT IN (SELECT no_rawat FROM mlite_vedika WHERE jenis = '1')
+		  AND mv.no_rawat IS NULL
 	`, buildPlaceholders(len(carabayar)))
 
 	args := append(toInterfaceSlice(carabayar), period)
@@ -122,65 +126,94 @@ func (r *MySQLDashboardRepository) CountPengajuanByJenis(ctx context.Context, pe
 }
 
 // GetDailyTrend returns daily aggregation data for the dashboard chart.
+// OPTIMIZED: Uses single query with GROUP BY instead of N+1 queries.
 func (r *MySQLDashboardRepository) GetDailyTrend(ctx context.Context, period string, carabayar []string) ([]entity.DashboardTrendItem, error) {
 	if len(carabayar) == 0 {
 		return []entity.DashboardTrendItem{}, nil
 	}
 
-	// Get all days in the period
-	daysQuery := `
-		SELECT DISTINCT DATE(tgl_registrasi) as day
-		FROM reg_periksa
-		WHERE DATE_FORMAT(tgl_registrasi, '%Y-%m') = ?
+	// Single optimized query that gets all trend data in one go
+	// Uses UNION ALL to combine rencana and pengajuan counts
+	query := fmt.Sprintf(`
+		SELECT 
+			day,
+			SUM(rencana_ralan) as rencana_ralan,
+			SUM(rencana_ranap) as rencana_ranap,
+			SUM(pengajuan_ralan) as pengajuan_ralan,
+			SUM(pengajuan_ranap) as pengajuan_ranap
+		FROM (
+			-- Rencana Ralan (from reg_periksa)
+			SELECT 
+				DATE(rp.tgl_registrasi) as day,
+				COUNT(*) as rencana_ralan,
+				0 as rencana_ranap,
+				0 as pengajuan_ralan,
+				0 as pengajuan_ranap
+			FROM reg_periksa rp
+			INNER JOIN penjab pj ON rp.kd_pj = pj.kd_pj
+			WHERE pj.kd_pj IN (%s)
+			  AND DATE_FORMAT(rp.tgl_registrasi, '%%Y-%%m') = ?
+			  AND rp.status_lanjut = 'Ralan'
+			  AND rp.stts != 'Batal'
+			GROUP BY DATE(rp.tgl_registrasi)
+			
+			UNION ALL
+			
+			-- Pengajuan Ralan (from mlite_vedika jenis=2)
+			SELECT 
+				DATE(tgl_registrasi) as day,
+				0 as rencana_ralan,
+				0 as rencana_ranap,
+				COUNT(*) as pengajuan_ralan,
+				0 as pengajuan_ranap
+			FROM mlite_vedika
+			WHERE DATE_FORMAT(tgl_registrasi, '%%Y-%%m') = ?
+			  AND jenis = '2'
+			GROUP BY DATE(tgl_registrasi)
+			
+			UNION ALL
+			
+			-- Pengajuan Ranap (from mlite_vedika jenis=1)
+			SELECT 
+				DATE(tgl_registrasi) as day,
+				0 as rencana_ralan,
+				0 as rencana_ranap,
+				0 as pengajuan_ralan,
+				COUNT(*) as pengajuan_ranap
+			FROM mlite_vedika
+			WHERE DATE_FORMAT(tgl_registrasi, '%%Y-%%m') = ?
+			  AND jenis = '1'
+			GROUP BY DATE(tgl_registrasi)
+		) combined
+		GROUP BY day
 		ORDER BY day
-	`
+	`, buildPlaceholders(len(carabayar)))
 
-	rows, err := r.db.QueryContext(ctx, daysQuery, period)
+	args := append(toInterfaceSlice(carabayar), period, period, period)
+
+	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get days: %w", err)
+		return nil, fmt.Errorf("failed to get daily trend: %w", err)
 	}
 	defer rows.Close()
 
-	var days []string
+	var trend []entity.DashboardTrendItem
 	for rows.Next() {
-		var day string
-		if err := rows.Scan(&day); err != nil {
-			return nil, fmt.Errorf("failed to scan day: %w", err)
+		var item entity.DashboardTrendItem
+		if err := rows.Scan(
+			&item.Date,
+			&item.Rencana.Ralan,
+			&item.Rencana.Ranap,
+			&item.Pengajuan.Ralan,
+			&item.Pengajuan.Ranap,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan trend item: %w", err)
 		}
-		days = append(days, day)
+		trend = append(trend, item)
 	}
 
-	// For each day, count rencana and pengajuan
-	var trend []entity.DashboardTrendItem
-	for _, day := range days {
-		item := entity.DashboardTrendItem{Date: day}
-
-		// Count rencana ralan for this day
-		ralanQuery := fmt.Sprintf(`
-			SELECT COUNT(*) FROM reg_periksa rp
-			INNER JOIN penjab pj ON rp.kd_pj = pj.kd_pj
-			WHERE pj.kd_pj IN (%s)
-			  AND DATE(rp.tgl_registrasi) = ?
-			  AND rp.status_lanjut = 'Ralan'
-			  AND rp.stts != 'Batal'
-		`, buildPlaceholders(len(carabayar)))
-
-		args := append(toInterfaceSlice(carabayar), day)
-		r.db.QueryRowContext(ctx, ralanQuery, args...).Scan(&item.Rencana.Ralan)
-
-		// Count pengajuan ralan for this day
-		r.db.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM mlite_vedika
-			WHERE DATE(tgl_registrasi) = ? AND jenis = '2'
-		`, day).Scan(&item.Pengajuan.Ralan)
-
-		// Count pengajuan ranap for this day
-		r.db.QueryRowContext(ctx, `
-			SELECT COUNT(*) FROM mlite_vedika
-			WHERE DATE(tgl_registrasi) = ? AND jenis = '1'
-		`, day).Scan(&item.Pengajuan.Ranap)
-
-		trend = append(trend, item)
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating trend rows: %w", err)
 	}
 
 	if trend == nil {
