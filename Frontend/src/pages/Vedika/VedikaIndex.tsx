@@ -7,6 +7,9 @@ import {
     type ClaimStatus,
     type JenisLayanan,
 } from '../../services/vedikaService';
+import DatePicker from '../../components/form/date-picker';
+import Select from '../../components/form/Select';
+import Label from '../../components/form/Label';
 
 // =============================================================================
 // TYPES
@@ -146,69 +149,63 @@ export default function VedikaIndex() {
                 <div className="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-white/[0.03]">
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
                         {/* Date From */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                Tanggal Mulai
-                            </label>
-                            <input
-                                type="date"
-                                value={filters.date_from}
-                                onChange={(e) => handleFilterChange('date_from', e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-                            />
-                        </div>
+                        <DatePicker
+                            id="date_from"
+                            label="Tanggal Mulai"
+                            defaultDate={filters.date_from}
+                            onChange={(dates) => {
+                                if (dates && dates[0]) {
+                                    const dateStr = dates[0].toISOString().split('T')[0];
+                                    handleFilterChange('date_from', dateStr);
+                                }
+                            }}
+                        />
 
                         {/* Date To */}
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                Tanggal Akhir
-                            </label>
-                            <input
-                                type="date"
-                                value={filters.date_to}
-                                onChange={(e) => handleFilterChange('date_to', e.target.value)}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-                            />
-                        </div>
+                        <DatePicker
+                            id="date_to"
+                            label="Tanggal Akhir"
+                            defaultDate={filters.date_to}
+                            onChange={(dates) => {
+                                if (dates && dates[0]) {
+                                    const dateStr = dates[0].toISOString().split('T')[0];
+                                    handleFilterChange('date_to', dateStr);
+                                }
+                            }}
+                        />
 
                         {/* Status */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                Status
-                            </label>
-                            <select
-                                value={filters.claimStatus}
-                                onChange={(e) => handleFilterChange('claimStatus', e.target.value as ClaimStatus)}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-                            >
-                                <option value="RENCANA">Rencana</option>
-                                <option value="PENGAJUAN">Pengajuan</option>
-                                <option value="PERBAIKAN">Perbaikan</option>
-                                <option value="LENGKAP">Lengkap</option>
-                                <option value="SETUJU">Disetujui</option>
-                            </select>
+                            <Label>Status</Label>
+                            <Select
+                                options={[
+                                    { value: 'RENCANA', label: 'Rencana' },
+                                    { value: 'PENGAJUAN', label: 'Pengajuan' },
+                                    { value: 'PERBAIKAN', label: 'Perbaikan' },
+                                    { value: 'LENGKAP', label: 'Lengkap' },
+                                    { value: 'SETUJU', label: 'Disetujui' },
+                                ]}
+                                defaultValue={filters.claimStatus}
+                                onChange={(value) => handleFilterChange('claimStatus', value as ClaimStatus)}
+                            />
                         </div>
 
                         {/* Jenis */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                Jenis Layanan
-                            </label>
-                            <select
-                                value={filters.jenis}
-                                onChange={(e) => handleFilterChange('jenis', e.target.value as JenisLayanan)}
-                                className="w-full rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors"
-                            >
-                                <option value="ralan">Rawat Jalan</option>
-                                <option value="ranap">Rawat Inap</option>
-                            </select>
+                            <Label>Jenis Layanan</Label>
+                            <Select
+                                options={[
+                                    { value: 'ralan', label: 'Rawat Jalan' },
+                                    { value: 'ranap', label: 'Rawat Inap' },
+                                ]}
+                                defaultValue={filters.jenis}
+                                onChange={(value) => handleFilterChange('jenis', value as JenisLayanan)}
+                            />
                         </div>
 
                         {/* Search */}
                         <div>
-                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                Cari
-                            </label>
+                            <Label>Cari</Label>
                             <div className="relative">
                                 <input
                                     type="text"

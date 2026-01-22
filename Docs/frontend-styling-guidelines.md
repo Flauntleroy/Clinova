@@ -1,0 +1,31 @@
+# Frontend Styling Guidelines - Clinova
+
+To maintain UI/UX consistency with the **TailAdmin** dashboard theme, all developers and AI assistants must follow these guidelines when creating or modifying frontend components.
+
+## Core Component Usage
+
+### 1. Date Picker
+Always use the specialized `DatePicker` component instead of native HTML `<input type="date">`.
+- **Import**: `import DatePicker from '../../components/form/date-picker';`
+- **Features**: Includes Flatpickr integration, premium styling, and dark mode support.
+- **Props**: `id`, `label`, `defaultDate`, `onChange`, `mode` (single/range).
+
+### 2. Select / Combo Box
+Use the `Select` component for standard dropdowns to ensure consistent appearance with the TailAdmin theme.
+- **Import**: `import Select from '../../components/form/Select';`
+- **Props**: `options` (Array of {value, label}), `defaultValue`, `onChange`, `placeholder`.
+- **Note**: The `Select` component handles the custom arrow icon and TailAdmin styling (borders, shadows, dark mode) out of the box.
+
+### 3. Typography & Colors
+- **Fonts**: Use the project's default font (Inter/Outfit as configured in `index.css`).
+- **Primary Color**: Use the `brand` color family (e.g., `text-brand-600`, `bg-brand-500`).
+- **Secondary Colors**: Use `gray` for neutral elements, `success` for completions, and `error` for destructive actions.
+
+## Patterns
+
+### Form Layouts
+- Use the `Label` component for all input labels.
+- Group filters in responsive grids (e.g., `grid-cols-1 sm:grid-cols-2 lg:grid-cols-5`).
+
+### Dark Mode
+Ensure all components have `dark:` variant classes to support the dashboard's appearance toggling.

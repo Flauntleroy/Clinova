@@ -141,7 +141,6 @@ export interface ClaimDetailResponse {
     data: ClaimDetail;
 }
 
-// Section 1: SEP Detail
 export interface SEPDetail {
     no_sep: string;
     tgl_sep: string;
