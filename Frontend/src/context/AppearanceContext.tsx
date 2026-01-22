@@ -117,7 +117,6 @@ export const AppearanceProvider: React.FC<{ children: React.ReactNode }> = ({
         if (!isInitialized) return;
 
         const html = document.documentElement;
-        const body = document.body;
 
         // Mode (dark/light)
         if (appearance.mode === 'dark') {

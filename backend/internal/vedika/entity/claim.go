@@ -96,13 +96,14 @@ type ClaimEpisode struct {
 // IndexFilter contains filter parameters for Index workbench.
 // Uses explicit date range, NOT active_period.
 type IndexFilter struct {
-	DateFrom string         `json:"date_from"` // Required, YYYY-MM-DD
-	DateTo   string         `json:"date_to"`   // Required, YYYY-MM-DD
-	Status   ClaimStatus    `json:"status"`    // Required
-	Jenis    JenisPelayanan `json:"jenis"`     // Optional, ralan or ranap
-	Search   string         `json:"search"`    // Optional
-	Page     int            `json:"page"`
-	Limit    int            `json:"limit"`
+	DateFrom  string         `json:"date_from"` // Required, YYYY-MM-DD
+	DateTo    string         `json:"date_to"`   // Required, YYYY-MM-DD
+	Status    ClaimStatus    `json:"status"`    // Required
+	Jenis     JenisPelayanan `json:"jenis"`     // Optional, ralan or ranap
+	Search    string         `json:"search"`    // Optional
+	Carabayar []string       `json:"-"`         // Filter by payment method (e.g., ["BPJ"])
+	Page      int            `json:"page"`
+	Limit     int            `json:"limit"`
 }
 
 // ClaimDetail contains full claim context for detail view.

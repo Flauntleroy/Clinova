@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"log"
 
 	"github.com/clinova/simrs/backend/internal/vedika/entity"
 	"github.com/clinova/simrs/backend/internal/vedika/repository"
@@ -13,16 +14,19 @@ import (
 // Uses explicit date range filtering, NOT active_period.
 type WorkbenchService struct {
 	indexRepo   repository.IndexRepository
+	detailRepo  repository.DetailRepository
 	auditLogger *audit.Logger
 }
 
 // NewWorkbenchService creates a new workbench service.
 func NewWorkbenchService(
 	indexRepo repository.IndexRepository,
+	detailRepo repository.DetailRepository,
 	auditLogger *audit.Logger,
 ) *WorkbenchService {
 	return &WorkbenchService{
 		indexRepo:   indexRepo,
+		detailRepo:  detailRepo,
 		auditLogger: auditLogger,
 	}
 }
@@ -74,7 +78,36 @@ func (s *WorkbenchService) ListIndex(ctx context.Context, filter entity.IndexFil
 	return result, nil
 }
 
-// GetClaimDetail returns full claim context.
+// GetClaimDetailFull returns comprehensive claim context with all 23 data categories.
+func (s *WorkbenchService) GetClaimDetailFull(ctx context.Context, noRawat string, actor audit.Actor, ip string) (*entity.ClaimDetailFull, error) {
+	detail, err := s.detailRepo.GetFullClaimDetail(ctx, noRawat)
+	if err != nil {
+		// Debug logging - will show in console
+		log.Printf("ERROR GetClaimDetailFull for no_rawat=%s: %v", noRawat, err)
+		return nil, fmt.Errorf("failed to get claim detail: %w", err)
+	}
+
+	// Audit log - READ
+	s.auditLogger.LogInsert(audit.InsertParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "claim",
+			PrimaryKey: map[string]string{"no_rawat": noRawat},
+		},
+		InsertedData: map[string]interface{}{
+			"action":   "view_claim_detail_full",
+			"no_rawat": noRawat,
+		},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Melihat detail lengkap klaim %s", noRawat),
+	})
+
+	return detail, nil
+}
+
+// GetClaimDetail returns full claim context (legacy, use GetClaimDetailFull for comprehensive data).
 func (s *WorkbenchService) GetClaimDetail(ctx context.Context, noRawat string, actor audit.Actor, ip string) (*entity.ClaimDetail, error) {
 	detail, err := s.indexRepo.GetClaimDetail(ctx, noRawat)
 	if err != nil {

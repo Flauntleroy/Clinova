@@ -65,35 +65,29 @@ func (r *MySQLIndexRepository) ListByDateRange(ctx context.Context, filter entit
 }
 
 // listRencana lists episodes NOT in mlite_vedika.
+// OPTIMIZED v3: Uses NOT EXISTS (faster than LEFT JOIN), skips COUNT query entirely.
+// Uses LIMIT+1 pattern to detect if there are more pages.
 func (r *MySQLIndexRepository) listRencana(ctx context.Context, filter entity.IndexFilter) (*entity.PaginatedResult[entity.ClaimEpisode], error) {
-	var query, countQuery string
-	var args, countArgs []interface{}
+	var query string
+	var args []interface{}
 
 	if filter.Jenis == entity.JenisRanap {
 		// RANAP: use kamar_inap.tgl_keluar
 		baseWhere := `
 			ki.tgl_keluar IS NOT NULL
-			AND ki.tgl_keluar BETWEEN ? AND ?
+			AND ki.tgl_keluar >= ?
+			AND ki.tgl_keluar < DATE_ADD(?, INTERVAL 1 DAY)
 			AND rp.status_lanjut = 'Ranap'
-			AND rp.stts != 'Batal'
-			AND rp.no_rawat NOT IN (SELECT no_rawat FROM mlite_vedika)
+			AND rp.stts <> 'Batal'
+			AND NOT EXISTS (SELECT 1 FROM mlite_vedika mv WHERE mv.no_rawat = rp.no_rawat)
 		`
-		countArgs = []interface{}{filter.DateFrom, filter.DateTo}
 		args = []interface{}{filter.DateFrom, filter.DateTo}
 
 		if filter.Search != "" {
 			baseWhere += " AND (p.nm_pasien LIKE ? OR rp.no_rawat LIKE ? OR rp.no_rkm_medis LIKE ?)"
 			searchPattern := "%" + filter.Search + "%"
-			countArgs = append(countArgs, searchPattern, searchPattern, searchPattern)
 			args = append(args, searchPattern, searchPattern, searchPattern)
 		}
-
-		countQuery = fmt.Sprintf(`
-			SELECT COUNT(DISTINCT rp.no_rawat) FROM reg_periksa rp
-			INNER JOIN pasien p ON rp.no_rkm_medis = p.no_rkm_medis
-			INNER JOIN kamar_inap ki ON rp.no_rawat = ki.no_rawat
-			WHERE %s
-		`, baseWhere)
 
 		query = fmt.Sprintf(`
 			SELECT
@@ -119,27 +113,33 @@ func (r *MySQLIndexRepository) listRencana(ctx context.Context, filter entity.In
 		`, baseWhere)
 	} else {
 		// RALAN: use reg_periksa.tgl_registrasi
-		baseWhere := `
-			rp.tgl_registrasi BETWEEN ? AND ?
+		// CRITICAL: Filter by carabayar (penjab) - this is what makes PHP fast!
+
+		// Build carabayar placeholders
+		carabayarPlaceholders := "'BPJ'" // Default to BPJ if not specified
+		if len(filter.Carabayar) > 0 {
+			placeholders := make([]string, len(filter.Carabayar))
+			for i, cb := range filter.Carabayar {
+				placeholders[i] = "'" + cb + "'"
+			}
+			carabayarPlaceholders = strings.Join(placeholders, ",")
+		}
+
+		baseWhere := fmt.Sprintf(`
+			rp.tgl_registrasi >= ?
+			AND rp.tgl_registrasi < DATE_ADD(?, INTERVAL 1 DAY)
 			AND rp.status_lanjut = 'Ralan'
-			AND rp.stts != 'Batal'
-			AND rp.no_rawat NOT IN (SELECT no_rawat FROM mlite_vedika)
-		`
-		countArgs = []interface{}{filter.DateFrom, filter.DateTo}
+			AND rp.stts <> 'Batal'
+			AND pj.kd_pj IN (%s)
+			AND NOT EXISTS (SELECT 1 FROM mlite_vedika mv WHERE mv.no_rawat = rp.no_rawat)
+		`, carabayarPlaceholders)
 		args = []interface{}{filter.DateFrom, filter.DateTo}
 
 		if filter.Search != "" {
 			baseWhere += " AND (p.nm_pasien LIKE ? OR rp.no_rawat LIKE ? OR rp.no_rkm_medis LIKE ?)"
 			searchPattern := "%" + filter.Search + "%"
-			countArgs = append(countArgs, searchPattern, searchPattern, searchPattern)
 			args = append(args, searchPattern, searchPattern, searchPattern)
 		}
-
-		countQuery = fmt.Sprintf(`
-			SELECT COUNT(*) FROM reg_periksa rp
-			INNER JOIN pasien p ON rp.no_rkm_medis = p.no_rkm_medis
-			WHERE %s
-		`, baseWhere)
 
 		query = fmt.Sprintf(`
 			SELECT
@@ -162,15 +162,10 @@ func (r *MySQLIndexRepository) listRencana(ctx context.Context, filter entity.In
 		`, baseWhere)
 	}
 
-	// Get total count
-	var total int64
-	if err := r.db.QueryRowContext(ctx, countQuery, countArgs...).Scan(&total); err != nil {
-		return nil, fmt.Errorf("failed to count rencana: %w", err)
-	}
-
-	// Get paginated data
+	// Calculate pagination - fetch LIMIT+1 to detect if there's a next page
 	offset := (filter.Page - 1) * filter.Limit
-	args = append(args, filter.Limit, offset)
+	fetchLimit := filter.Limit + 1
+	args = append(args, fetchLimit, offset)
 
 	rows, err := r.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -199,6 +194,24 @@ func (r *MySQLIndexRepository) listRencana(ctx context.Context, filter entity.In
 
 	if episodes == nil {
 		episodes = []entity.ClaimEpisode{}
+	}
+
+	// Determine if there are more pages
+	hasMore := len(episodes) > filter.Limit
+	if hasMore {
+		// Remove the extra row we fetched
+		episodes = episodes[:filter.Limit]
+	}
+
+	// For RENCANA status, we don't know exact total (no COUNT query)
+	// Estimate based on current page and hasMore
+	var total int64
+	if hasMore {
+		// There are more pages, estimate a larger total
+		total = int64((filter.Page + 1) * filter.Limit)
+	} else {
+		// This is the last page
+		total = int64((filter.Page-1)*filter.Limit + len(episodes))
 	}
 
 	totalPages := int(total) / filter.Limit

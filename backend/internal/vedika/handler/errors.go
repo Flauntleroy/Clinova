@@ -27,6 +27,18 @@ func handleVedikaError(c *gin.Context, err error) {
 		return
 	}
 
+	// Handle claim not found
+	if strings.Contains(err.Error(), "claim not found") || strings.Contains(err.Error(), "episode not found") {
+		response.Error(c, http.StatusNotFound, "NOT_FOUND", "Klaim tidak ditemukan")
+		return
+	}
+
+	// Handle invalid status
+	if strings.Contains(err.Error(), "invalid status") {
+		response.Error(c, http.StatusBadRequest, "INVALID_PARAMS", err.Error())
+		return
+	}
+
 	// Generic error
 	response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 }

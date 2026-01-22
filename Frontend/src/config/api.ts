@@ -28,11 +28,15 @@ export const API_ENDPOINTS = {
     DASHBOARD: `${API_BASE_URL}/admin/vedika/dashboard`,
     DASHBOARD_TREND: `${API_BASE_URL}/admin/vedika/dashboard/trend`,
     INDEX: `${API_BASE_URL}/admin/vedika/index`,
-    CLAIM: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}`,
-    CLAIM_STATUS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/status`,
-    CLAIM_DIAGNOSIS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/diagnosis`,
-    CLAIM_PROCEDURE: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/procedure`,
-    CLAIM_DOCUMENTS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/documents`,
-    CLAIM_RESUME: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${encodeURIComponent(noRawat)}/resume`,
+    // Claim detail - uses wildcard path because no_rawat contains slashes
+    // e.g., /claim/2025/12/29/000045
+    CLAIM: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/${noRawat}`,
+    // Action endpoints use query parameter to avoid Gin wildcard limitations
+    // e.g., /claim-action/status?no_rawat=2025/12/29/000045
+    CLAIM_STATUS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim-action/status?no_rawat=${encodeURIComponent(noRawat)}`,
+    CLAIM_DIAGNOSIS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim-action/diagnosis?no_rawat=${encodeURIComponent(noRawat)}`,
+    CLAIM_PROCEDURE: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim-action/procedure?no_rawat=${encodeURIComponent(noRawat)}`,
+    CLAIM_DOCUMENTS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim-action/documents?no_rawat=${encodeURIComponent(noRawat)}`,
+    CLAIM_RESUME: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim-action/resume?no_rawat=${encodeURIComponent(noRawat)}`,
   },
 };

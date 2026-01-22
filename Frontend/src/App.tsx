@@ -26,6 +26,8 @@ import AuditLogs from "./pages/AuditLogs";
 import UserManagement from "./pages/UserManagement";
 import RoleManagement from "./pages/RoleManagement";
 import VedikaDashboard from "./pages/Vedika/VedikaDashboard";
+import VedikaIndex from "./pages/Vedika/VedikaIndex";
+import ClaimDetailPage from "./pages/Vedika/ClaimDetailPage";
 
 export default function App() {
   return (
@@ -51,6 +53,8 @@ export default function App() {
               <Route path="/sessions" element={<Sessions />} />
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/vedika" element={<VedikaDashboard />} />
+              <Route path="/vedika/index" element={<VedikaIndex />} />
+              <Route path="/vedika/detail/*" element={<ClaimDetailPage />} />
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/roles" element={<RoleManagement />} />
 

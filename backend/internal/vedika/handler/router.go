@@ -32,10 +32,11 @@ func NewRouter(
 	settingsRepo := repository.NewMySQLSettingsRepository(db)
 	dashboardRepo := repository.NewMySQLDashboardRepository(db)
 	indexRepo := repository.NewMySQLIndexRepository(db)
+	detailRepo := repository.NewMySQLDetailRepository(db)
 
 	// Initialize services
 	dashboardSvc := vedikaService.NewDashboardService(settingsRepo, dashboardRepo, auditLogger)
-	workbenchSvc := vedikaService.NewWorkbenchService(indexRepo, auditLogger)
+	workbenchSvc := vedikaService.NewWorkbenchService(indexRepo, detailRepo, auditLogger)
 
 	return &Router{
 		dashboardHandler: NewDashboardHandler(dashboardSvc),
@@ -65,26 +66,22 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 			index.GET("/index", r.workbenchHandler.ListIndex)
 		}
 
-		// Claim detail endpoints
+		// Claim detail - uses wildcard because no_rawat contains slashes
+		// e.g., /claim/2025/12/29/000045
 		claim := vedika.Group("/claim")
 		{
-			// View claim (require vedika.claim.read)
-			claim.GET("/:no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
+			claim.GET("/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
+		}
 
-			// Update status (require vedika.claim.update_status)
-			claim.POST("/:no_rawat/status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)
-
-			// Edit diagnosis (require vedika.claim.edit_medical_data)
-			claim.POST("/:no_rawat/diagnosis", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateDiagnosis)
-
-			// Edit procedure (require vedika.claim.edit_medical_data)
-			claim.POST("/:no_rawat/procedure", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)
-
-			// Upload documents (require vedika.claim.upload_document)
-			claim.POST("/:no_rawat/documents", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)
-
-			// View resume (require vedika.claim.read_resume)
-			claim.GET("/:no_rawat/resume", r.permMiddleware.RequirePermission("vedika.claim.read_resume"), r.workbenchHandler.GetResume)
+		// Claim actions - use query parameter for no_rawat to avoid wildcard issues
+		// e.g., /claim-action/status?no_rawat=2025/12/29/000045
+		claimAction := vedika.Group("/claim-action")
+		{
+			claimAction.POST("/status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)
+			claimAction.POST("/diagnosis", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateDiagnosis)
+			claimAction.POST("/procedure", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)
+			claimAction.POST("/documents", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)
+			claimAction.GET("/resume", r.permMiddleware.RequirePermission("vedika.claim.read_resume"), r.workbenchHandler.GetResume)
 		}
 	}
 }

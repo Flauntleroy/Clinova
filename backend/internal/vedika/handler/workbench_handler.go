@@ -61,13 +61,15 @@ func (h *WorkbenchHandler) ListIndex(c *gin.Context) {
 	})
 }
 
-// GetClaimDetail handles GET /admin/vedika/claim/:no_rawat
+// GetClaimDetail handles GET /admin/vedika/claim/*no_rawat
+// Returns comprehensive claim data with all 23 categories.
 func (h *WorkbenchHandler) GetClaimDetail(c *gin.Context) {
 	noRawat := decodeNoRawat(c.Param("no_rawat"))
 	actor := getActor(c)
 	ip := c.ClientIP()
 
-	detail, err := h.workbenchSvc.GetClaimDetail(c.Request.Context(), noRawat, actor, ip)
+	// Use GetClaimDetailFull for comprehensive data
+	detail, err := h.workbenchSvc.GetClaimDetailFull(c.Request.Context(), noRawat, actor, ip)
 	if err != nil {
 		handleVedikaError(c, err)
 		return
@@ -76,9 +78,13 @@ func (h *WorkbenchHandler) GetClaimDetail(c *gin.Context) {
 	response.Success(c, detail)
 }
 
-// UpdateStatus handles POST /admin/vedika/claim/:no_rawat/status
+// UpdateStatus handles POST /admin/vedika/claim-action/status?no_rawat=...
 func (h *WorkbenchHandler) UpdateStatus(c *gin.Context) {
-	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	noRawat := c.Query("no_rawat")
+	if noRawat == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "no_rawat query parameter is required")
+		return
+	}
 	actor := getActor(c)
 	ip := c.ClientIP()
 
@@ -96,9 +102,13 @@ func (h *WorkbenchHandler) UpdateStatus(c *gin.Context) {
 	response.SuccessWithMessage(c, "Status berhasil diubah", gin.H{"status": req.Status})
 }
 
-// UpdateDiagnosis handles POST /admin/vedika/claim/:no_rawat/diagnosis
+// UpdateDiagnosis handles POST /admin/vedika/claim-action/diagnosis?no_rawat=...
 func (h *WorkbenchHandler) UpdateDiagnosis(c *gin.Context) {
-	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	noRawat := c.Query("no_rawat")
+	if noRawat == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "no_rawat query parameter is required")
+		return
+	}
 	actor := getActor(c)
 	ip := c.ClientIP()
 
@@ -116,9 +126,13 @@ func (h *WorkbenchHandler) UpdateDiagnosis(c *gin.Context) {
 	response.SuccessWithMessage(c, "Diagnosa berhasil diubah", nil)
 }
 
-// UpdateProcedure handles POST /admin/vedika/claim/:no_rawat/procedure
+// UpdateProcedure handles POST /admin/vedika/claim-action/procedure?no_rawat=...
 func (h *WorkbenchHandler) UpdateProcedure(c *gin.Context) {
-	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	noRawat := c.Query("no_rawat")
+	if noRawat == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "no_rawat query parameter is required")
+		return
+	}
 	actor := getActor(c)
 	ip := c.ClientIP()
 
@@ -143,9 +157,13 @@ func (h *WorkbenchHandler) UploadDocument(c *gin.Context) {
 	response.Error(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Document upload not yet implemented")
 }
 
-// GetResume handles GET /admin/vedika/claim/:no_rawat/resume
+// GetResume handles GET /admin/vedika/claim-action/resume?no_rawat=...
 func (h *WorkbenchHandler) GetResume(c *gin.Context) {
-	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	noRawat := c.Query("no_rawat")
+	if noRawat == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "no_rawat query parameter is required")
+		return
+	}
 	actor := getActor(c)
 	ip := c.ClientIP()
 
@@ -189,7 +207,13 @@ func (h *WorkbenchHandler) parseIndexFilter(c *gin.Context) entity.IndexFilter {
 }
 
 // decodeNoRawat decodes URL-encoded no_rawat parameter.
+// For wildcard params (*no_rawat), Gin includes the leading slash, so we strip it.
 func decodeNoRawat(encoded string) string {
+	// Strip leading slash from wildcard param
+	if len(encoded) > 0 && encoded[0] == '/' {
+		encoded = encoded[1:]
+	}
+
 	decoded, err := url.QueryUnescape(encoded)
 	if err != nil {
 		return encoded
