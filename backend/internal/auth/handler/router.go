@@ -22,12 +22,8 @@ func NewRouter(
 	sessionService *service.SessionService,
 	permissionService *service.PermissionService,
 ) *Router {
-	engine := gin.Default()
-	engine.UseRawPath = true
-	engine.UnescapePathValues = false
-
 	r := &Router{
-		engine:           engine,
+		engine:           gin.Default(),
 		jwtMiddleware:    middleware.NewJWTMiddleware(jwtManager, sessionService),
 		permMiddleware:   middleware.NewPermissionMiddleware(permissionService),
 		loginRateLimiter: middleware.NewDefaultLoginRateLimiter(),

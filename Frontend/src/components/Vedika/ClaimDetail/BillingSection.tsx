@@ -15,7 +15,31 @@ const BillingSection: React.FC<BillingSectionProps> = ({ data }) => {
     return (
         <div className="bg-white mb-6 border border-gray-300">
             <div className="bg-gray-900 text-white px-3 py-1 text-[10px] font-bold uppercase text-center">
-                Rincian Biaya Perawatan ({data.mode === 'ralan' ? 'Rawat Jalan' : 'Rawat Inap'})
+                Rincian Biaya Perawatan ({data.mode === 'legacy' ? 'Sistem Legacy' : 'Sistem M-Lite'})
+            </div>
+
+            {/* Nota & Header Info */}
+            <div className="grid grid-cols-2 bg-gray-50 border-b border-gray-300 text-[10px]">
+                <div className="flex border-r border-gray-200 p-2">
+                    <span className="w-20 font-medium text-gray-500">No. Nota</span>
+                    <span className="mr-2">:</span>
+                    <span className="font-mono font-bold text-blue-700">{data.no_nota || '-'}</span>
+                </div>
+                <div className="flex p-2">
+                    <span className="w-20 font-medium text-gray-500">Kasir/Login</span>
+                    <span className="mr-2">:</span>
+                    <span className="font-bold">{data.kasir || '-'}</span>
+                </div>
+                <div className="flex border-t border-r border-gray-200 p-2">
+                    <span className="w-20 font-medium text-gray-500">Tgl. Closing</span>
+                    <span className="mr-2">:</span>
+                    <span>{data.tgl_bayar || '-'}</span>
+                </div>
+                <div className="flex border-t border-gray-200 p-2">
+                    <span className="w-20 font-medium text-gray-500">Status</span>
+                    <span className="mr-2">:</span>
+                    <span className="text-green-600 font-bold uppercase">LUNAS / CLOSING</span>
+                </div>
             </div>
 
             <div className="text-[10px]">

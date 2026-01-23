@@ -16,7 +16,9 @@ const DiagnosisSection: React.FC<DiagnosisSectionProps> = ({ data }) => {
             </div>
 
             {(!data || data.length === 0) ? (
-                <div className="p-2 text-center text-gray-400 text-[10px]">No diagnosis data available.</div>
+                <div className="p-4 text-center text-gray-400 text-[10px] italic bg-white border-b border-gray-200">
+                    -- Belum ada data diagnosa (ICD 10) yang diinputkan --
+                </div>
             ) : (
                 data.map((dx, idx) => (
                     <div key={idx} className="grid grid-cols-12 text-[10px] border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">

@@ -22,7 +22,7 @@ const SOAPSection: React.FC<SOAPSectionProps> = ({ data, jenis }) => {
             </div>
 
             {(!data || data.length === 0) ? (
-                <div className="p-4 text-center text-gray-500 text-xs">Belum ada pemeriksaan {jenis === 'ranap' ? 'rawat inap' : 'rawat jalan'}.</div>
+                <div className="p-4 text-center text-gray-500 text-xs">Belum ada pemeriksaan {jenis?.toLowerCase() === 'ranap' ? 'rawat inap' : 'rawat jalan'}.</div>
             ) : (
                 data.map((exam, idx) => (
                     <div key={idx} className="border-b border-gray-300 last:border-b-0">

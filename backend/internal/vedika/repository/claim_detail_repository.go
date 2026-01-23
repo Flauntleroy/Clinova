@@ -48,6 +48,7 @@ func NewMySQLClaimDetailRepository(db *sql.DB) *MySQLClaimDetailRepository {
 
 // GetSEPDetail fetches SEP data from bridging_sep and bpjs_prb.
 func (r *MySQLClaimDetailRepository) GetSEPDetail(ctx context.Context, noRawat string) (*entity.SEPDetail, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			COALESCE(bs.no_sep, '') as no_sep,
@@ -115,6 +116,7 @@ func (r *MySQLClaimDetailRepository) GetSEPDetail(ctx context.Context, noRawat s
 
 // GetPatientRegistration fetches complete patient and registration data.
 func (r *MySQLClaimDetailRepository) GetPatientRegistration(ctx context.Context, noRawat string) (*entity.PatientRegistration, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			p.no_rkm_medis,
@@ -140,6 +142,7 @@ func (r *MySQLClaimDetailRepository) GetPatientRegistration(ctx context.Context,
 				WHEN rp.status_lanjut = 'Ranap' THEN COALESCE(b.nm_bangsal, '')
 				ELSE COALESCE(pol.nm_poli, '')
 			END as unit,
+			rp.kd_dokter,
 			COALESCE(d.nm_dokter, ''),
 			COALESCE(pj.png_jawab, ''),
 			COALESCE(rp.p_jawab, ''),
@@ -182,6 +185,7 @@ func (r *MySQLClaimDetailRepository) GetPatientRegistration(ctx context.Context,
 		&pt.TglRegistrasi,
 		&pt.JamReg,
 		&pt.Unit,
+		&pt.KdDokter,
 		&pt.Dokter,
 		&pt.CaraBayar,
 		&pt.PenanggungJawab,
@@ -227,6 +231,9 @@ func (r *MySQLClaimDetailRepository) GetPatientRegistration(ctx context.Context,
 
 // GetSOAPExams fetches SOAP examination data from pemeriksaan_ralan and pemeriksaan_ranap.
 func (r *MySQLClaimDetailRepository) GetSOAPExams(ctx context.Context, noRawat string) ([]entity.SOAPExamination, error) {
+	// Trim slash for safety with wildcard routes
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
 	// Get status to determine which table to query
 	var statusLanjut string
 	if err := r.db.QueryRowContext(ctx, "SELECT status_lanjut FROM reg_periksa WHERE no_rawat = ?", noRawat).Scan(&statusLanjut); err != nil {
@@ -330,6 +337,7 @@ func (r *MySQLClaimDetailRepository) GetSOAPExams(ctx context.Context, noRawat s
 
 // GetMedicalActions fetches all types of medical actions.
 func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRawat string) ([]entity.MedicalAction, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	var actions []entity.MedicalAction
 
 	// Query templates for different action types
@@ -339,7 +347,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 	}{
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, COALESCE(d.nm_dokter, ''), ''
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, COALESCE(d.nm_dokter, ''), '', COALESCE(rjd.biaya_rawat, 0)
 				FROM rawat_jl_dr rjd
 				INNER JOIN jns_perawatan jp ON rjd.kd_jenis_prw = jp.kd_jenis_prw
 				LEFT JOIN dokter d ON rjd.kd_dokter = d.kd_dokter
@@ -349,7 +357,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 		},
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, '', COALESCE(pt.nama, '')
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, '', COALESCE(pt.nama, ''), COALESCE(rjp.biaya_rawat, 0)
 				FROM rawat_jl_pr rjp
 				INNER JOIN jns_perawatan jp ON rjp.kd_jenis_prw = jp.kd_jenis_prw
 				LEFT JOIN petugas pt ON rjp.nip = pt.nip
@@ -359,7 +367,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 		},
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, COALESCE(d.nm_dokter, ''), COALESCE(pt.nama, '')
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jp.kd_jenis_prw, jp.nm_perawatan, COALESCE(d.nm_dokter, ''), COALESCE(pt.nama, ''), COALESCE(rjdp.biaya_rawat, 0)
 				FROM rawat_jl_drpr rjdp
 				INNER JOIN jns_perawatan jp ON rjdp.kd_jenis_prw = jp.kd_jenis_prw
 				LEFT JOIN dokter d ON rjdp.kd_dokter = d.kd_dokter
@@ -370,7 +378,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 		},
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, COALESCE(d.nm_dokter, ''), ''
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, COALESCE(d.nm_dokter, ''), '', COALESCE(rid.biaya_rawat, 0)
 				FROM rawat_inap_dr rid
 				INNER JOIN jns_perawatan_inap jpi ON rid.kd_jenis_prw = jpi.kd_jenis_prw
 				LEFT JOIN dokter d ON rid.kd_dokter = d.kd_dokter
@@ -380,7 +388,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 		},
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, '', COALESCE(pt.nama, '')
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, '', COALESCE(pt.nama, ''), COALESCE(rip.biaya_rawat, 0)
 				FROM rawat_inap_pr rip
 				INNER JOIN jns_perawatan_inap jpi ON rip.kd_jenis_prw = jpi.kd_jenis_prw
 				LEFT JOIN petugas pt ON rip.nip = pt.nip
@@ -390,7 +398,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 		},
 		{
 			query: `
-				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, COALESCE(d.nm_dokter, ''), COALESCE(pt.nama, '')
+				SELECT DATE_FORMAT(tgl_perawatan, '%Y-%m-%d'), jam_rawat, jpi.kd_jenis_prw, jpi.nm_perawatan, COALESCE(d.nm_dokter, ''), COALESCE(pt.nama, ''), COALESCE(ridp.biaya_rawat, 0)
 				FROM rawat_inap_drpr ridp
 				INNER JOIN jns_perawatan_inap jpi ON ridp.kd_jenis_prw = jpi.kd_jenis_prw
 				LEFT JOIN dokter d ON ridp.kd_dokter = d.kd_dokter
@@ -409,7 +417,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 
 		for rows.Next() {
 			var a entity.MedicalAction
-			if err := rows.Scan(&a.Tanggal, &a.Jam, &a.Kode, &a.Nama, &a.Dokter, &a.Petugas); err == nil {
+			if err := rows.Scan(&a.Tanggal, &a.Jam, &a.Kode, &a.Nama, &a.Dokter, &a.Petugas, &a.Cost); err == nil {
 				a.Kategori = aq.kategori
 				actions = append(actions, a)
 			}
@@ -430,6 +438,7 @@ func (r *MySQLClaimDetailRepository) GetMedicalActions(ctx context.Context, noRa
 
 // GetRoomStays fetches room stay data for inpatients.
 func (r *MySQLClaimDetailRepository) GetRoomStays(ctx context.Context, noRawat string) ([]entity.RoomStay, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			DATE_FORMAT(ki.tgl_masuk, '%Y-%m-%d'),
@@ -488,6 +497,7 @@ func (r *MySQLClaimDetailRepository) GetRoomStays(ctx context.Context, noRawat s
 
 // GetOperations fetches operation data.
 func (r *MySQLClaimDetailRepository) GetOperations(ctx context.Context, noRawat string) ([]entity.OperationItem, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			DATE_FORMAT(o.tgl_operasi, '%Y-%m-%d %H:%i:%s'),
@@ -525,6 +535,7 @@ func (r *MySQLClaimDetailRepository) GetOperations(ctx context.Context, noRawat 
 
 // GetOperationReports fetches operation report data.
 func (r *MySQLClaimDetailRepository) GetOperationReports(ctx context.Context, noRawat string) ([]entity.OperationReport, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			lo.no_rawat,
@@ -579,6 +590,7 @@ func (r *MySQLClaimDetailRepository) GetOperationReports(ctx context.Context, no
 
 // GetRadiology fetches radiology exam and result data.
 func (r *MySQLClaimDetailRepository) GetRadiology(ctx context.Context, noRawat string) (*entity.RadiologyFullData, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	data := &entity.RadiologyFullData{
 		Exams:   []entity.RadiologyExam{},
 		Results: []entity.RadiologyResult{},
@@ -660,67 +672,80 @@ func (r *MySQLClaimDetailRepository) GetRadiology(ctx context.Context, noRawat s
 
 // GetLabExams fetches laboratory examination data with details.
 func (r *MySQLClaimDetailRepository) GetLabExams(ctx context.Context, noRawat string) ([]entity.LabExam, error) {
-	// First get lab headers
-	headerQuery := `
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
+	query := `
 		SELECT 
-			DATE_FORMAT(pl.tgl_periksa, '%Y-%m-%d'),
+			DATE_FORMAT(pl.tgl_periksa, '%Y-%m-%d') as tgl_periksa,
 			pl.jam,
 			pl.kd_jenis_prw,
-			COALESCE(jpl.nm_perawatan, ''),
-			COALESCE(d.nm_dokter, ''),
-			COALESCE(pl.biaya, 0)
+			COALESCE(jpl.nm_perawatan, '') as nm_perawatan,
+			COALESCE(d.nm_dokter, '') as nm_dokter,
+			COALESCE(pl.biaya, 0) as biaya,
+			COALESCE(tl.Pemeriksaan, '') as nm_pemeriksaan,
+			COALESCE(dpl.nilai, '') as nilai,
+			COALESCE(tl.satuan, '') as satuan,
+			COALESCE(dpl.nilai_rujukan, '') as rujukan,
+			COALESCE(dpl.keterangan, '') as keterangan
 		FROM periksa_lab pl
 		LEFT JOIN jns_perawatan_lab jpl ON pl.kd_jenis_prw = jpl.kd_jenis_prw
 		LEFT JOIN dokter d ON pl.dokter_perujuk = d.kd_dokter
+		LEFT JOIN detail_periksa_lab dpl ON pl.no_rawat = dpl.no_rawat 
+			AND pl.kd_jenis_prw = dpl.kd_jenis_prw 
+			AND pl.tgl_periksa = dpl.tgl_periksa 
+			AND pl.jam = dpl.jam
+		LEFT JOIN template_laboratorium tl ON dpl.id_template = tl.id_template
 		WHERE pl.no_rawat = ?
-		ORDER BY pl.tgl_periksa, pl.jam
+		ORDER BY pl.tgl_periksa, pl.jam, tl.urut
 	`
 
-	rows, err := r.db.QueryContext(ctx, headerQuery, noRawat)
+	rows, err := r.db.QueryContext(ctx, query, noRawat)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get lab exams: %w", err)
 	}
 	defer rows.Close()
 
-	var exams []entity.LabExam
+	// Map to group details by header
+	examMap := make(map[string]*entity.LabExam)
+	var examKeys []string
+
 	for rows.Next() {
-		var e entity.LabExam
-		if err := rows.Scan(&e.TglPeriksa, &e.Jam, &e.Kode, &e.NamaTindakan, &e.Dokter, &e.Biaya); err != nil {
+		var tgl, jam, kode, nama, dokter, pNama, pNilai, pSatuan, pRujukan, pKet string
+		var biaya float64
+
+		if err := rows.Scan(&tgl, &jam, &kode, &nama, &dokter, &biaya, &pNama, &pNilai, &pSatuan, &pRujukan, &pKet); err != nil {
 			continue
 		}
-		e.Details = []entity.LabDetail{}
-		exams = append(exams, e)
-	}
 
-	// Get details for each exam
-	detailQuery := `
-		SELECT 
-			COALESCE(tl.Pemeriksaan, ''),
-			COALESCE(dpl.nilai, ''),
-			COALESCE(dpl.satuan, ''),
-			COALESCE(dpl.nilai_rujukan, ''),
-			COALESCE(dpl.keterangan, '')
-		FROM detail_periksa_lab dpl
-		LEFT JOIN template_laboratorium tl ON dpl.id_template = tl.id_template
-		WHERE dpl.no_rawat = ? AND dpl.kd_jenis_prw = ? AND dpl.tgl_periksa = ? AND dpl.jam = ?
-	`
-
-	for i := range exams {
-		detailRows, err := r.db.QueryContext(ctx, detailQuery, noRawat, exams[i].Kode, exams[i].TglPeriksa, exams[i].Jam)
-		if err != nil {
-			continue
-		}
-		for detailRows.Next() {
-			var d entity.LabDetail
-			if err := detailRows.Scan(&d.Pemeriksaan, &d.Nilai, &d.Satuan, &d.NilaiRujukan, &d.Keterangan); err == nil {
-				exams[i].Details = append(exams[i].Details, d)
+		key := tgl + jam + kode
+		if _, ok := examMap[key]; !ok {
+			exam := &entity.LabExam{
+				TglPeriksa:   tgl,
+				Jam:          jam,
+				Kode:         kode,
+				NamaTindakan: nama,
+				Dokter:       dokter,
+				Biaya:        biaya,
+				Details:      []entity.LabDetail{},
 			}
+			examMap[key] = exam
+			examKeys = append(examKeys, key)
 		}
-		detailRows.Close()
+
+		if pNama != "" {
+			examMap[key].Details = append(examMap[key].Details, entity.LabDetail{
+				Pemeriksaan:  pNama,
+				Nilai:        pNilai,
+				Satuan:       pSatuan,
+				NilaiRujukan: pRujukan,
+				Keterangan:   pKet,
+			})
+		}
 	}
 
-	if exams == nil {
-		exams = []entity.LabExam{}
+	exams := []entity.LabExam{}
+	for _, k := range examKeys {
+		exams = append(exams, *examMap[k])
 	}
 
 	return exams, nil
@@ -732,6 +757,7 @@ func (r *MySQLClaimDetailRepository) GetLabExams(ctx context.Context, noRawat st
 
 // GetMedicines fetches all medicine data (pemberian, operasi, resep_pulang).
 func (r *MySQLClaimDetailRepository) GetMedicines(ctx context.Context, noRawat string) ([]entity.MedicineItem, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	var medicines []entity.MedicineItem
 
 	// 1. Pemberian obat
@@ -832,39 +858,43 @@ func (r *MySQLClaimDetailRepository) GetMedicines(ctx context.Context, noRawat s
 // SECTION 8: Medical Resume
 // =============================================================================
 
-// GetResumeRalan fetches outpatient resume.
 func (r *MySQLClaimDetailRepository) GetResumeRalan(ctx context.Context, noRawat string) (*entity.MedicalResumeRalan, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
 	query := `
 		SELECT 
-			r.no_rawat,
-			COALESCE(r.kd_dokter, ''),
-			COALESCE(d.nm_dokter, ''),
-			COALESCE(r.diagnosa_utama, ''),
-			COALESCE(r.diagnosa_sekunder, ''),
-			COALESCE(r.diagnosa_sekunder2, ''),
-			COALESCE(r.diagnosa_sekunder3, ''),
-			COALESCE(r.diagnosa_sekunder4, ''),
-			COALESCE(r.prosedur_utama, ''),
-			COALESCE(r.prosedur_sekunder, ''),
-			COALESCE(r.prosedur_sekunder2, ''),
-			COALESCE(r.prosedur_sekunder3, ''),
-			COALESCE(r.keluhan_utama, ''),
-			COALESCE(r.pemeriksaan, ''),
-			COALESCE(r.tensi, ''),
-			COALESCE(r.respirasi, ''),
-			COALESCE(r.nadi, ''),
-			COALESCE(r.dirawat_inapkan, ''),
-			COALESCE(r.kunjungan_awal, ''),
-			COALESCE(r.kunjungan_lanjutan, ''),
-			COALESCE(r.observasi, ''),
-			COALESCE(r.post_operasi, '')
-		FROM resume_pasien r
-		LEFT JOIN dokter d ON r.kd_dokter = d.kd_dokter
-		WHERE r.no_rawat = ?
+			rp.no_rawat,
+			rp.kd_dokter,
+			d.nm_dokter,
+			COALESCE(rs.diagnosa_utama, ''),
+			COALESCE(rs.diagnosa_sekunder, ''),
+			COALESCE(rs.diagnosa_sekunder2, ''),
+			COALESCE(rs.diagnosa_sekunder3, ''),
+			COALESCE(rs.diagnosa_sekunder4, ''),
+			COALESCE(rs.prosedur_utama, ''),
+			COALESCE(rs.prosedur_sekunder, ''),
+			COALESCE(rs.prosedur_sekunder2, ''),
+			COALESCE(rs.prosedur_sekunder3, ''),
+			COALESCE(pr.keluhan, ''),
+			COALESCE(pr.pemeriksaan, ''),
+			COALESCE(pr.tensi, ''),
+			COALESCE(pr.respirasi, ''),
+			COALESCE(pr.nadi, ''),
+			COALESCE(pr.suhu_tubuh, ''),
+			COALESCE(pr.alergi, ''),
+			COALESCE(pr.penilaian, ''),
+			COALESCE(pr.rtl, '')
+		FROM reg_periksa rp
+		INNER JOIN dokter d ON rp.kd_dokter = d.kd_dokter
+		LEFT JOIN resume_pasien rs ON rp.no_rawat = rs.no_rawat
+		LEFT JOIN pemeriksaan_ralan pr ON rp.no_rawat = pr.no_rawat
+		WHERE rp.no_rawat = ?
+		ORDER BY pr.tgl_perawatan DESC, pr.jam_rawat DESC
 		LIMIT 1
 	`
 
 	var res entity.MedicalResumeRalan
+	var diagnosaAssessment, planInstruksi string
 	err := r.db.QueryRowContext(ctx, query, noRawat).Scan(
 		&res.NoRawat,
 		&res.KdDokter,
@@ -883,11 +913,10 @@ func (r *MySQLClaimDetailRepository) GetResumeRalan(ctx context.Context, noRawat
 		&res.Tensi,
 		&res.Respirasi,
 		&res.Nadi,
-		&res.DirawatInapkan,
-		&res.KunjunganAwal,
-		&res.KunjunganLanjutan,
-		&res.Observasi,
-		&res.PostOperasi,
+		&res.Suhu,
+		&res.Alergi,
+		&diagnosaAssessment, // Dummy for assessment from pr
+		&planInstruksi,      // Dummy for plan from pr
 	)
 	if err == sql.ErrNoRows {
 		return nil, nil
@@ -901,6 +930,7 @@ func (r *MySQLClaimDetailRepository) GetResumeRalan(ctx context.Context, noRawat
 
 // GetResumeRanap fetches inpatient resume.
 func (r *MySQLClaimDetailRepository) GetResumeRanap(ctx context.Context, noRawat string) (*entity.MedicalResumeRanap, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			r.no_rawat,
@@ -922,7 +952,7 @@ func (r *MySQLClaimDetailRepository) GetResumeRanap(ctx context.Context, noRawat
 			COALESCE(r.prosedur_sekunder2, ''),
 			COALESCE(r.prosedur_sekunder3, ''),
 			COALESCE(r.obat_pulang, ''),
-			COALESCE(r.kondisi_pulang, '')
+			COALESCE(r.ket_keluar, '')
 		FROM resume_pasien_ranap r
 		LEFT JOIN dokter d ON r.kd_dokter = d.kd_dokter
 		WHERE r.no_rawat = ?
@@ -968,45 +998,75 @@ func (r *MySQLClaimDetailRepository) GetResumeRanap(ctx context.Context, noRawat
 
 // GetBilling fetches billing data (legacy or mlite mode).
 func (r *MySQLClaimDetailRepository) GetBilling(ctx context.Context, noRawat string, statusLanjut string) (*entity.BillingSummary, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	billing := &entity.BillingSummary{
 		Categories: []entity.BillingCategory{},
 	}
 
-	// Check if mlite_billing exists
+	// 1. Fetch Nota Header (No Nota, Kasir, Tgl Bayar)
+	var notaQuery string
+	if statusLanjut == "Ranap" {
+		notaQuery = `SELECT no_nota, DATE_FORMAT(tanggal, '%Y-%m-%d'), jam FROM nota_inap WHERE no_rawat = ? LIMIT 1`
+	} else {
+		notaQuery = `SELECT no_nota, DATE_FORMAT(tanggal, '%Y-%m-%d'), jam FROM nota_jalan WHERE no_rawat = ? LIMIT 1`
+	}
+	var tgl, jam string
+	r.db.QueryRowContext(ctx, notaQuery, noRawat).Scan(&billing.NoNota, &tgl, &jam)
+	if tgl != "" {
+		billing.TglBayar = tgl + " " + jam
+	}
+
+	// 2. Fetch Kasir (joining with reg_periksa or nota)
+	// Simple lookup for cashier name from nota if possible
+	r.db.QueryRowContext(ctx, "SELECT COALESCE(login, '') FROM nota_jalan WHERE no_rawat = ? UNION SELECT COALESCE(login, '') FROM nota_inap WHERE no_rawat = ? LIMIT 1", noRawat, noRawat).Scan(&billing.Kasir)
+
+	// 3. Check if mlite_billing exists for summary totals
 	var mliteCount int
 	r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM mlite_billing WHERE no_rawat = ?", noRawat).Scan(&mliteCount)
 
 	if mliteCount > 0 {
 		billing.Mode = "mlite"
-		// Get mlite billing summary
 		r.db.QueryRowContext(ctx, `
 			SELECT COALESCE(jumlah_total, 0), COALESCE(potongan, 0), COALESCE(jumlah_harus_bayar, 0)
 			FROM mlite_billing WHERE no_rawat = ? LIMIT 1
 		`, noRawat).Scan(&billing.JumlahTotal, &billing.Potongan, &billing.JumlahBayar)
 	} else {
 		billing.Mode = "legacy"
-		// Get legacy billing
-		rows, err := r.db.QueryContext(ctx, `
-			SELECT no, nm_perawatan, pemisah, biaya, jumlah, tambahan, totalbiaya
-			FROM billing WHERE no_rawat = ? ORDER BY no
-		`, noRawat)
-		if err == nil {
-			defer rows.Close()
-			var cat entity.BillingCategory
-			cat.Kategori = "Rincian Biaya"
-			for rows.Next() {
-				var item entity.BillingItem
-				if err := rows.Scan(&item.No, &item.NamaPerawatan, &item.Pemisah, &item.Biaya, &item.Jumlah, &item.Tambahan, &item.TotalBiaya); err == nil {
-					cat.Items = append(cat.Items, item)
+	}
+
+	// ALWAYS Trim slash for sub-queries too
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
+	// 4. Always fetch detailed items from 'billing' table for transparency (mLite's requirement)
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT no, nm_perawatan, pemisah, biaya, jumlah, tambahan, totalbiaya
+		FROM billing WHERE no_rawat = ? ORDER BY no
+	`, noRawat)
+	if err == nil {
+		defer rows.Close()
+		var cat entity.BillingCategory
+		cat.Kategori = "Rincian Komponen Biaya"
+		for rows.Next() {
+			var item entity.BillingItem
+			if err := rows.Scan(&item.No, &item.NamaPerawatan, &item.Pemisah, &item.Biaya, &item.Jumlah, &item.Tambahan, &item.TotalBiaya); err == nil {
+				cat.Items = append(cat.Items, item)
+				if billing.Mode == "legacy" {
 					cat.Subtotal += item.TotalBiaya
 				}
 			}
-			if len(cat.Items) > 0 {
-				billing.Categories = append(billing.Categories, cat)
-			}
-			billing.JumlahTotal = cat.Subtotal
-			billing.JumlahBayar = cat.Subtotal
 		}
+		if len(cat.Items) > 0 {
+			billing.Categories = append(billing.Categories, cat)
+			if billing.Mode == "legacy" {
+				billing.JumlahTotal = cat.Subtotal
+				billing.JumlahBayar = cat.Subtotal - billing.Potongan
+			}
+		}
+	}
+
+	// If no billing found in 'billing' table or totals are zero, fallback to aggregation from source tables
+	if len(billing.Categories) == 0 || (billing.Mode == "legacy" && billing.JumlahTotal == 0) {
+		r.aggregateBillingDetails(ctx, noRawat, billing)
 	}
 
 	// Generate terbilang (simple implementation)
@@ -1029,6 +1089,7 @@ func formatTerbilang(amount float64) string {
 
 // GetSPRI fetches SPRI data if exists.
 func (r *MySQLClaimDetailRepository) GetSPRI(ctx context.Context, noRawat string) (*entity.SPRIDetail, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
 			no_surat,
@@ -1075,9 +1136,10 @@ func (r *MySQLClaimDetailRepository) GetSPRI(ctx context.Context, noRawat string
 
 // GetDigitalDocuments fetches uploaded documents.
 func (r *MySQLClaimDetailRepository) GetDigitalDocuments(ctx context.Context, noRawat string) ([]entity.DigitalDocument, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	query := `
 		SELECT 
-			CAST(bdp.no AS CHAR),
+			bdp.kode,
 			bdp.no_rawat,
 			bdp.kode,
 			COALESCE(mbd.nama, ''),
@@ -1085,7 +1147,6 @@ func (r *MySQLClaimDetailRepository) GetDigitalDocuments(ctx context.Context, no
 		FROM berkas_digital_perawatan bdp
 		LEFT JOIN master_berkas_digital mbd ON bdp.kode = mbd.kode
 		WHERE bdp.no_rawat = ?
-		ORDER BY bdp.no DESC
 	`
 
 	rows, err := r.db.QueryContext(ctx, query, noRawat)
@@ -1101,7 +1162,8 @@ func (r *MySQLClaimDetailRepository) GetDigitalDocuments(ctx context.Context, no
 			continue
 		}
 		// Build file URL for frontend
-		d.FileURL = "/berkasrawat/" + strings.TrimPrefix(d.LokasiFile, "pages/upload/")
+		// Example: http://192.168.0.2/webapps/berkasrawat/pages/upload/LP_AHYAR.jpeg
+		d.FileURL = "http://192.168.0.2/webapps/berkasrawat/" + d.LokasiFile
 		docs = append(docs, d)
 	}
 
@@ -1118,10 +1180,12 @@ func (r *MySQLClaimDetailRepository) GetDigitalDocuments(ctx context.Context, no
 
 // GetClaimFullDetail assembles complete claim data from all sections.
 func (r *MySQLClaimDetailRepository) GetClaimFullDetail(ctx context.Context, noRawat string) (*entity.ClaimFullDetail, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
 	// Get patient registration first (required)
 	patient, err := r.GetPatientRegistration(ctx, noRawat)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("patient registration for %s not found: %w", noRawat, err)
 	}
 
 	detail := &entity.ClaimFullDetail{
@@ -1137,17 +1201,23 @@ func (r *MySQLClaimDetailRepository) GetClaimFullDetail(ctx context.Context, noR
 	// Get SOAP exams
 	if exams, err := r.GetSOAPExams(ctx, noRawat); err == nil {
 		detail.SOAPExams = exams
+	} else {
+		fmt.Printf("vedika_debug: error GetSOAPExams for %s: %v\n", noRawat, err)
 	}
 
 	// Get diagnoses (reuse existing method from IndexRepository)
 	indexRepo := &MySQLIndexRepository{db: r.db}
 	if diagnoses, err := indexRepo.GetDiagnoses(ctx, noRawat); err == nil {
 		detail.Diagnoses = diagnoses
+	} else {
+		fmt.Printf("vedika_debug: error GetDiagnoses for %s: %v\n", noRawat, err)
 	}
 
 	// Get procedures
 	if procedures, err := indexRepo.GetProcedures(ctx, noRawat); err == nil {
 		detail.Procedures = procedures
+	} else {
+		fmt.Printf("vedika_debug: error GetProcedures for %s: %v\n", noRawat, err)
 	}
 
 	// Get medical actions
@@ -1189,16 +1259,22 @@ func (r *MySQLClaimDetailRepository) GetClaimFullDetail(ctx context.Context, noR
 	if patient.StatusLanjut == "Ranap" {
 		if resume, err := r.GetResumeRanap(ctx, noRawat); err == nil {
 			detail.ResumeRanap = resume
+		} else {
+			fmt.Printf("vedika_debug: error GetResumeRanap for %s: %v\n", noRawat, err)
 		}
 	} else {
 		if resume, err := r.GetResumeRalan(ctx, noRawat); err == nil {
 			detail.ResumeRalan = resume
+		} else {
+			fmt.Printf("vedika_debug: error GetResumeRalan for %s: %v\n", noRawat, err)
 		}
 	}
 
 	// Get billing
 	if billing, err := r.GetBilling(ctx, noRawat, patient.StatusLanjut); err == nil {
 		detail.Billing = billing
+	} else {
+		fmt.Printf("vedika_debug: error GetBilling for %s: %v\n", noRawat, err)
 	}
 
 	// Get SPRI
@@ -1217,4 +1293,181 @@ func (r *MySQLClaimDetailRepository) GetClaimFullDetail(ctx context.Context, noR
 	}
 
 	return detail, nil
+}
+
+// aggregateBillingDetails aggregates data from detail tables if the summary 'billing' table is empty.
+func (r *MySQLClaimDetailRepository) aggregateBillingDetails(ctx context.Context, noRawat string, billing *entity.BillingSummary) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
+
+	// Reset if we're doing a full aggregate
+	billing.Categories = []entity.BillingCategory{}
+	billing.JumlahTotal = 0
+	billing.Mode = "aggregated"
+
+	// 1. Medicines
+	meds, _ := r.GetMedicines(ctx, noRawat)
+	if len(meds) > 0 {
+		cat := entity.BillingCategory{Kategori: "Obat & BHP"}
+		for i, m := range meds {
+			if m.Biaya > 0 {
+				item := entity.BillingItem{
+					No:            i + 1,
+					NamaPerawatan: m.NamaObat,
+					Biaya:         m.Biaya / m.Jumlah, // Standardize to unit price
+					Jumlah:        int(m.Jumlah),
+					TotalBiaya:    m.Biaya,
+				}
+				if m.Jumlah > 0 && item.Biaya == 0 {
+					item.Biaya = m.Biaya
+				}
+				cat.Items = append(cat.Items, item)
+				cat.Subtotal += item.TotalBiaya
+			}
+		}
+		if len(cat.Items) > 0 {
+			billing.Categories = append(billing.Categories, cat)
+			billing.JumlahTotal += cat.Subtotal
+		}
+	}
+
+	// 2. Room Stays
+	rooms, _ := r.GetRoomStays(ctx, noRawat)
+	if len(rooms) > 0 {
+		cat := entity.BillingCategory{Kategori: "Kamar Inap"}
+		for i, rs := range rooms {
+			item := entity.BillingItem{
+				No:            i + 1,
+				NamaPerawatan: fmt.Sprintf("%s (%s)", rs.Bangsal, rs.Kamar),
+				Biaya:         rs.Tarif,
+				Jumlah:        rs.LamaInap,
+				TotalBiaya:    rs.TotalBiaya,
+			}
+			cat.Items = append(cat.Items, item)
+			cat.Subtotal += item.TotalBiaya
+		}
+		billing.Categories = append(billing.Categories, cat)
+		billing.JumlahTotal += cat.Subtotal
+	}
+
+	// 3. Surgery (Aggregated from 'operasi' table)
+	queryOp := `
+		SELECT 
+			COALESCE(biayaoperator1, 0) + COALESCE(biayaoperator2, 0) + COALESCE(biayaoperator3, 0) +
+			COALESCE(biayaasisten_operator1, 0) + COALESCE(biayaasisten_operator2, 0) + COALESCE(biayaasisten_operator3, 0) +
+			COALESCE(biayainstrumen, 0) + COALESCE(biayadokter_anak, 0) + COALESCE(biayaperawaat_resusitas, 0) +
+			COALESCE(biayabidan, 0) + COALESCE(biayabidan2, 0) + COALESCE(biayabidan3, 0) +
+			COALESCE(biayadokter_anestesi, 0) + COALESCE(biayaasisten_anestesi, 0) + COALESCE(biayaasisten_anestesi2, 0) +
+			COALESCE(biayaperawat_luar, 0) as jasa_medis,
+			COALESCE(biayaalat, 0) as biaya_alat,
+			COALESCE(biayasewaok, 0) as sewa_ok,
+			COALESCE(akomodasi, 0) + COALESCE(bagian_rs, 0) as sarana,
+			COALESCE(biaya_omloop, 0) + COALESCE(biaya_omloop2, 0) + 
+			COALESCE(biaya_omloop3, 0) + COALESCE(biaya_omloop4, 0) + COALESCE(biaya_omloop5, 0) as omloop,
+			COALESCE(biayasarpras, 0) as sarpras,
+			COALESCE(biaya_dokter_pjanak, 0) + COALESCE(biaya_dokter_umum, 0) as jm_lain
+		FROM operasi WHERE no_rawat = ?
+	`
+	rowsOp, err := r.db.QueryContext(ctx, queryOp, noRawat)
+	if err == nil {
+		cat := entity.BillingCategory{Kategori: "Operasi & VK"}
+		idx := 1
+		for rowsOp.Next() {
+			var jm, alat, ok, sarana, oml, srp, lain float64
+			rowsOp.Scan(&jm, &alat, &ok, &sarana, &oml, &srp, &lain)
+
+			if jm > 0 {
+				cat.Items = append(cat.Items, entity.BillingItem{No: idx, NamaPerawatan: "Jasa Medis & Tim Operasi", Biaya: jm, Jumlah: 1, TotalBiaya: jm})
+				cat.Subtotal += jm
+				idx++
+			}
+			if alat > 0 {
+				cat.Items = append(cat.Items, entity.BillingItem{No: idx, NamaPerawatan: "Biaya Alat Operasi", Biaya: alat, Jumlah: 1, TotalBiaya: alat})
+				cat.Subtotal += alat
+				idx++
+			}
+			if ok > 0 {
+				cat.Items = append(cat.Items, entity.BillingItem{No: idx, NamaPerawatan: "Sewa Kamar OK/VK", Biaya: ok, Jumlah: 1, TotalBiaya: ok})
+				cat.Subtotal += ok
+				idx++
+			}
+			if sarana > 0 {
+				cat.Items = append(cat.Items, entity.BillingItem{No: idx, NamaPerawatan: "Sarana Operasi", Biaya: sarana, Jumlah: 1, TotalBiaya: sarana})
+				cat.Subtotal += sarana
+				idx++
+			}
+			if oml+srp+lain > 0 {
+				val := oml + srp + lain
+				cat.Items = append(cat.Items, entity.BillingItem{No: idx, NamaPerawatan: "Penunjang Operasi Lainnya", Biaya: val, Jumlah: 1, TotalBiaya: val})
+				cat.Subtotal += val
+				idx++
+			}
+		}
+		rowsOp.Close()
+		if len(cat.Items) > 0 {
+			billing.Categories = append(billing.Categories, cat)
+			billing.JumlahTotal += cat.Subtotal
+		}
+	}
+
+	// 4. Medical Actions
+	actions, _ := r.GetMedicalActions(ctx, noRawat)
+	if len(actions) > 0 {
+		cat := entity.BillingCategory{Kategori: "Tindakan Medis"}
+		for i, a := range actions {
+			if a.Cost > 0 {
+				item := entity.BillingItem{
+					No:            i + 1,
+					NamaPerawatan: a.Nama,
+					Biaya:         a.Cost,
+					Jumlah:        1,
+					TotalBiaya:    a.Cost,
+				}
+				cat.Items = append(cat.Items, item)
+				cat.Subtotal += item.TotalBiaya
+			}
+		}
+		if len(cat.Items) > 0 {
+			billing.Categories = append(billing.Categories, cat)
+			billing.JumlahTotal += cat.Subtotal
+		}
+	}
+
+	// 5. Lab & Rad
+	lab, _ := r.GetLabExams(ctx, noRawat)
+	if len(lab) > 0 {
+		cat := entity.BillingCategory{Kategori: "Laboratorium"}
+		for i, l := range lab {
+			item := entity.BillingItem{
+				No:            i + 1,
+				NamaPerawatan: l.NamaTindakan,
+				Biaya:         l.Biaya,
+				Jumlah:        1,
+				TotalBiaya:    l.Biaya,
+			}
+			cat.Items = append(cat.Items, item)
+			cat.Subtotal += item.TotalBiaya
+		}
+		billing.Categories = append(billing.Categories, cat)
+		billing.JumlahTotal += cat.Subtotal
+	}
+
+	rad, _ := r.GetRadiology(ctx, noRawat)
+	if rad != nil && len(rad.Exams) > 0 {
+		cat := entity.BillingCategory{Kategori: "Radiologi"}
+		for i, re := range rad.Exams {
+			item := entity.BillingItem{
+				No:            i + 1,
+				NamaPerawatan: re.Nama,
+				Biaya:         re.Biaya,
+				Jumlah:        1,
+				TotalBiaya:    re.Biaya,
+			}
+			cat.Items = append(cat.Items, item)
+			cat.Subtotal += item.TotalBiaya
+		}
+		billing.Categories = append(billing.Categories, cat)
+		billing.JumlahTotal += cat.Subtotal
+	}
+
+	billing.JumlahBayar = billing.JumlahTotal - billing.Potongan
 }

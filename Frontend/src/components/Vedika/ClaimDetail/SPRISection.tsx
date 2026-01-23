@@ -37,7 +37,7 @@ const SPRISection: React.FC<SPRISectionProps> = ({ data }) => {
                         <span className="font-bold">{data.no_kartu}</span>
                     </div>
                     <div className="flex">
-                        <span className="w-40">Nama Peserta</span>
+                        <span className="w-40">Nama Pasien</span>
                         <span className="mr-2">:</span>
                         <span className="font-bold uppercase">{data.nama_pasien}</span>
                     </div>

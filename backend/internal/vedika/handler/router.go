@@ -72,11 +72,11 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 		// Claim detail endpoints
 		claim := vedika.Group("/claim")
 		{
-			// View basic claim (require vedika.claim.read)
-			claim.GET("/:no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
-
 			// View FULL claim detail - all 14 sections (require vedika.claim.read)
 			claim.GET("/full/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.claimDetailHandler.GetClaimFullDetail)
+
+			// View basic claim (require vedika.claim.read)
+			claim.GET("/:no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
 
 			// Update status (require vedika.claim.update_status)
 			claim.POST("/:no_rawat/status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)

@@ -454,6 +454,7 @@ func (r *MySQLIndexRepository) UpdateClaimStatus(ctx context.Context, noRawat st
 
 // GetDiagnoses returns diagnoses for an episode.
 func (r *MySQLIndexRepository) GetDiagnoses(ctx context.Context, noRawat string) ([]entity.DiagnosisItem, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT dp.kd_penyakit, py.nm_penyakit, dp.status, dp.prioritas
 		FROM diagnosa_pasien dp
@@ -484,6 +485,7 @@ func (r *MySQLIndexRepository) GetDiagnoses(ctx context.Context, noRawat string)
 
 // GetProcedures returns procedures for an episode.
 func (r *MySQLIndexRepository) GetProcedures(ctx context.Context, noRawat string) ([]entity.ProcedureItem, error) {
+	noRawat = strings.TrimPrefix(noRawat, "/")
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT pp.kode, i.deskripsi_panjang, pp.prioritas
 		FROM prosedur_pasien pp

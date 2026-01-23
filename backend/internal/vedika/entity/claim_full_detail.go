@@ -61,6 +61,7 @@ type PatientRegistration struct {
 	TglRegistrasi   string   `json:"tgl_registrasi"`
 	JamReg          string   `json:"jam_reg"`
 	Unit            string   `json:"unit"`      // Poliklinik atau Bangsal
+	KdDokter        string   `json:"kd_dokter"` // Code for signature
 	Dokter          string   `json:"dokter"`    // Single for Ralan
 	DPJPList        []string `json:"dpjp_list"` // Multiple for Ranap
 	CaraBayar       string   `json:"cara_bayar"`
@@ -101,13 +102,14 @@ type SOAPExamination struct {
 
 // MedicalAction represents a medical procedure/treatment.
 type MedicalAction struct {
-	Tanggal  string `json:"tanggal"`
-	Jam      string `json:"jam"`
-	Kode     string `json:"kode"`
-	Nama     string `json:"nama"`
-	Dokter   string `json:"dokter"`
-	Petugas  string `json:"petugas"`
-	Kategori string `json:"kategori"` // ralan_dr, ralan_pr, ralan_drpr, ranap_dr, ranap_pr, ranap_drpr
+	Tanggal  string  `json:"tanggal"`
+	Jam      string  `json:"jam"`
+	Kode     string  `json:"kode"`
+	Nama     string  `json:"nama"`
+	Dokter   string  `json:"dokter"`
+	Petugas  string  `json:"petugas"`
+	Kategori string  `json:"kategori"` // ralan_dr, ralan_pr, ralan_drpr, ranap_dr, ranap_pr, ranap_drpr
+	Cost     float64 `json:"cost"`
 }
 
 // =============================================================================
@@ -251,6 +253,8 @@ type MedicalResumeRalan struct {
 	Tensi             string `json:"tensi"`
 	Respirasi         string `json:"respirasi"`
 	Nadi              string `json:"nadi"`
+	Suhu              string `json:"suhu"`
+	Alergi            string `json:"alergi"`
 	DirawatInapkan    string `json:"dirawat_inapkan"`    // Ya/Tidak
 	KunjunganAwal     string `json:"kunjungan_awal"`     // Ya/Tidak
 	KunjunganLanjutan string `json:"kunjungan_lanjutan"` // Ya/Tidak
@@ -307,6 +311,9 @@ type BillingCategory struct {
 // BillingSummary contains complete billing data.
 type BillingSummary struct {
 	Mode        string            `json:"mode"` // legacy or mlite
+	NoNota      string            `json:"no_nota"`
+	TglBayar    string            `json:"tgl_bayar"`
+	Kasir       string            `json:"kasir"`
 	Categories  []BillingCategory `json:"categories"`
 	JumlahTotal float64           `json:"jumlah_total"`
 	Potongan    float64           `json:"potongan"`

@@ -186,6 +186,7 @@ export interface PatientRegistration {
     tgl_registrasi: string;
     jam_reg: string;
     unit: string;
+    kd_dokter: string;
     dokter: string;
     dpjp_list: string[];
     cara_bayar: string;
@@ -389,6 +390,9 @@ export interface BillingCategory {
 
 export interface BillingSummary {
     mode: string;
+    no_nota: string;
+    tgl_bayar: string;
+    kasir: string;
     categories: BillingCategory[];
     jumlah_total: number;
     potongan: number;

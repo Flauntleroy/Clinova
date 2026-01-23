@@ -8,12 +8,18 @@ interface ResumeSectionProps {
 }
 
 const ResumeSection: React.FC<ResumeSectionProps> = ({ ralan, ranap, jenis }) => {
-    if (jenis === 'ranap' && ranap) {
-        return (
-            <div className="bg-white mb-6 border border-gray-300">
-                <div className="bg-amber-600 text-white px-3 py-1 text-[10px] font-bold uppercase text-center">
-                    Resume Medis Rawat Inap
-                </div>
+    const isRanap = jenis?.toLowerCase() === 'ranap';
+    const isRalan = jenis?.toLowerCase() === 'ralan';
+    const title = isRanap ? 'Resume Medis Rawat Inap' : 'Resume Medis Rawat Jalan';
+    const bgColor = isRanap ? 'bg-amber-600' : 'bg-amber-700';
+
+    return (
+        <div className="bg-white mb-6 border border-gray-300">
+            <div className={`${bgColor} text-white px-3 py-1 text-[10px] font-bold uppercase text-center`}>
+                {title}
+            </div>
+
+            {(isRanap && ranap) ? (
                 <div className="text-[10px]">
                     <ResumeRow label="Keluhan Utama" value={ranap.keluhan_utama} />
                     <ResumeRow label="Jalannya Penyakit" value={ranap.jalannya_penyakit} />
@@ -28,16 +34,7 @@ const ResumeSection: React.FC<ResumeSectionProps> = ({ ralan, ranap, jenis }) =>
                         DPJP: {ranap.nama_dokter}
                     </div>
                 </div>
-            </div>
-        );
-    }
-
-    if (jenis === 'ralan' && ralan) {
-        return (
-            <div className="bg-white mb-6 border border-gray-300">
-                <div className="bg-amber-700 text-white px-3 py-1 text-[10px] font-bold uppercase text-center">
-                    Resume Medis Rawat Jalan
-                </div>
+            ) : (isRalan && ralan) ? (
                 <div className="text-[10px]">
                     <ResumeRow label="Keluhan Utama" value={ralan.keluhan_utama} />
                     <ResumeRow label="Pemeriksaan" value={ralan.pemeriksaan} />
@@ -55,13 +52,11 @@ const ResumeSection: React.FC<ResumeSectionProps> = ({ ralan, ranap, jenis }) =>
                         Dokter: {ralan.nama_dokter}
                     </div>
                 </div>
-            </div>
-        );
-    }
-
-    return (
-        <div className="bg-amber-50 border border-amber-200 p-3 mb-6 text-center text-amber-700 text-xs italic">
-            Ringkasan resume medis belum diisi atau tidak tersedia untuk layanan ini.
+            ) : (
+                <div className="p-4 text-center text-amber-700 text-[10px] italic">
+                    -- Data resume medis untuk kunjungan ini belum tersedia --
+                </div>
+            )}
         </div>
     );
 };

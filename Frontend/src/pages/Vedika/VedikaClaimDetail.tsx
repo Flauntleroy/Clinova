@@ -49,7 +49,12 @@ const VedikaClaimDetail: React.FC = () => {
                 setLoading(true);
                 const response = await vedikaService.getClaimFullDetail(noRawat);
                 if (response.success) {
-                    setData(response.data);
+                    // Normalize status_lanjut to lowercase for easier component logic
+                    const normalizedData = {
+                        ...response.data,
+                        status_lanjut: response.data.status_lanjut?.toLowerCase() || ''
+                    };
+                    setData(normalizedData);
                 } else {
                     setError('Gagal mengambil data klaim.');
                 }
@@ -154,6 +159,37 @@ const VedikaClaimDetail: React.FC = () => {
                         <ResumeSection ralan={data.resume_ralan} ranap={data.resume_ranap} jenis={data.status_lanjut} />
                         <BillingSection data={data.billing} />
                         <DigitalDocSection data={data.documents} />
+
+                        {/* Legal Print Footer */}
+                        <div className="mt-12 pt-8 border-t border-gray-300">
+                            <div className="grid grid-cols-2 text-[10px]">
+                                <div className="space-y-4">
+                                    <div className="italic text-gray-500">
+                                        Dokumen ini dicetak otomatis dari Sistem MERA (Medical Electronic Record Archive)
+                                        berdasarkan data rekam medis elektronik RS.
+                                    </div>
+                                    <div className="font-mono text-gray-400">
+                                        Timestamp Cetak: {new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}<br />
+                                        ID Dokumen: {data.patient.no_rawat.replace(/\//g, '')}-{Date.now().toString().slice(-6)}<br />
+                                        Cetakan ke: 1 (Asli)
+                                    </div>
+                                </div>
+                                <div className="text-center">
+                                    <p className="font-bold uppercase mb-12">Petunjuk/Dokter Penanggung Jawab</p>
+                                    <p className="font-bold underline">{data.patient.dokter || '( ________________________ )'}</p>
+                                    <p className="text-gray-500">SIP. {data.patient.kd_dokter || '....................'}</p>
+                                </div>
+                            </div>
+
+                            <div className="mt-8 text-center border-t border-dashed border-gray-200 pt-4">
+                                <p className="text-[14px] font-black uppercase text-gray-800 tracking-tighter">
+                                    {data.patient.nama_pasien} - {data.patient.no_rm}
+                                </p>
+                                <p className="text-[8px] text-gray-400">
+                                    RSUD/Klinik - Vedika Claim Alignment Phase 5 - MERA System Standard
+                                </p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </main>
