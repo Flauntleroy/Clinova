@@ -26,6 +26,12 @@ type IndexRepository interface {
 	GetProcedures(ctx context.Context, noRawat string) ([]entity.ProcedureItem, error)
 	// Add/Update diagnosis
 	AddDiagnosis(ctx context.Context, noRawat string, req entity.DiagnosisUpdateRequest) error
+	// Sync diagnoses (Bulk update)
+	SyncDiagnoses(ctx context.Context, noRawat string, diagnoses []entity.DiagnosisUpdateRequest, statusLanjut string) error
+	// Get episode type (Ralan/Ranap)
+	GetEpisodeType(ctx context.Context, noRawat string) (string, error)
+	// Search ICD-10
+	SearchICD10(ctx context.Context, query string) ([]entity.ICD10Item, error)
 	// Add/Update procedure
 	AddProcedure(ctx context.Context, noRawat string, req entity.ProcedureUpdateRequest) error
 	// Get documents
@@ -452,6 +458,16 @@ func (r *MySQLIndexRepository) UpdateClaimStatus(ctx context.Context, noRawat st
 	return nil
 }
 
+// GetEpisodeType returns the episode type (Ralan or Ranap) from reg_periksa.
+func (r *MySQLIndexRepository) GetEpisodeType(ctx context.Context, noRawat string) (string, error) {
+	var statusLanjut string
+	err := r.db.QueryRowContext(ctx, "SELECT status_lanjut FROM reg_periksa WHERE no_rawat = ?", noRawat).Scan(&statusLanjut)
+	if err != nil {
+		return "", fmt.Errorf("failed to get episode type: %w", err)
+	}
+	return statusLanjut, nil
+}
+
 // GetDiagnoses returns diagnoses for an episode.
 func (r *MySQLIndexRepository) GetDiagnoses(ctx context.Context, noRawat string) ([]entity.DiagnosisItem, error) {
 	noRawat = strings.TrimPrefix(noRawat, "/")
@@ -470,9 +486,18 @@ func (r *MySQLIndexRepository) GetDiagnoses(ctx context.Context, noRawat string)
 	var diagnoses []entity.DiagnosisItem
 	for rows.Next() {
 		var d entity.DiagnosisItem
-		if err := rows.Scan(&d.KodePenyakit, &d.NamaPenyakit, &d.StatusDx, &d.Prioritas); err != nil {
+		var rawStatus string
+		if err := rows.Scan(&d.KodePenyakit, &d.NamaPenyakit, &rawStatus, &d.Prioritas); err != nil {
 			return nil, fmt.Errorf("failed to scan diagnosis: %w", err)
 		}
+
+		// Map priority to StatusDx for frontend (Utama/Sekunder)
+		if d.Prioritas == 1 {
+			d.StatusDx = "Utama"
+		} else {
+			d.StatusDx = "Sekunder"
+		}
+
 		diagnoses = append(diagnoses, d)
 	}
 
@@ -516,21 +541,89 @@ func (r *MySQLIndexRepository) GetProcedures(ctx context.Context, noRawat string
 
 // AddDiagnosis adds or updates a diagnosis.
 func (r *MySQLIndexRepository) AddDiagnosis(ctx context.Context, noRawat string, req entity.DiagnosisUpdateRequest) error {
-	statusDx := req.StatusDx
-	if statusDx == "" {
-		statusDx = "Sekunder"
+	statusLanjut, err := r.GetEpisodeType(ctx, noRawat)
+	if err != nil {
+		return fmt.Errorf("failed to get episode type: %w", err)
 	}
 
-	_, err := r.db.ExecContext(ctx, `
-		INSERT INTO diagnosa_pasien (no_rawat, kd_penyakit, status, prioritas)
-		VALUES (?, ?, ?, ?)
+	_, err = r.db.ExecContext(ctx, `
+		INSERT INTO diagnosa_pasien (no_rawat, kd_penyakit, status, prioritas, status_penyakit)
+		VALUES (?, ?, ?, ?, ?)
 		ON DUPLICATE KEY UPDATE status = ?, prioritas = ?
-	`, noRawat, req.KodePenyakit, statusDx, req.Prioritas, statusDx, req.Prioritas)
+	`, noRawat, req.KodePenyakit, statusLanjut, req.Prioritas, "Lama", statusLanjut, req.Prioritas)
 	if err != nil {
 		return fmt.Errorf("failed to add diagnosis: %w", err)
 	}
 
 	return nil
+}
+
+// SyncDiagnoses deletes existing diagnoses and inserts new ones in a transaction.
+func (r *MySQLIndexRepository) SyncDiagnoses(ctx context.Context, noRawat string, diagnoses []entity.DiagnosisUpdateRequest, statusLanjut string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// 1. Delete existing ones
+	_, err = tx.ExecContext(ctx, "DELETE FROM diagnosa_pasien WHERE no_rawat = ?", noRawat)
+	if err != nil {
+		return fmt.Errorf("failed to delete existing diagnoses: %w", err)
+	}
+
+	// 2. Insert new ones
+	for _, d := range diagnoses {
+		statusDx := d.StatusDx
+		if statusDx == "" {
+			statusDx = "Sekunder"
+		}
+
+		// Map status to Ralan/Ranap based on episode
+		// SIMRS Legacy uses 'status' column for Ralan/Ranap
+		// and 'prioritas' column (1 for Utama, >1 for Sekunder)
+		// and 'status_penyakit' column (usually 'Lama')
+
+		_, err = tx.ExecContext(ctx, `
+			INSERT INTO diagnosa_pasien (no_rawat, kd_penyakit, status, prioritas, status_penyakit)
+			VALUES (?, ?, ?, ?, ?)
+		`, noRawat, d.KodePenyakit, statusLanjut, d.Prioritas, "Lama")
+		if err != nil {
+			return fmt.Errorf("failed to insert diagnosis %s: %w", d.KodePenyakit, err)
+		}
+	}
+
+	return tx.Commit()
+}
+
+// SearchICD10 searches for ICD-10 entries by code or name.
+func (r *MySQLIndexRepository) SearchICD10(ctx context.Context, query string) ([]entity.ICD10Item, error) {
+	searchPattern := "%" + query + "%"
+	rows, err := r.db.QueryContext(ctx, `
+		SELECT kd_penyakit, nm_penyakit 
+		FROM penyakit 
+		WHERE kd_penyakit LIKE ? OR nm_penyakit LIKE ?
+		LIMIT 20
+	`, searchPattern, searchPattern)
+	if err != nil {
+		return nil, fmt.Errorf("failed to search ICD-10: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.ICD10Item
+	for rows.Next() {
+		var item entity.ICD10Item
+		if err := rows.Scan(&item.Kode, &item.Nama); err != nil {
+			return nil, fmt.Errorf("failed to scan ICD-10 result: %w", err)
+		}
+		results = append(results, item)
+	}
+
+	if results == nil {
+		results = []entity.ICD10Item{}
+	}
+
+	return results, nil
 }
 
 // AddProcedure adds or updates a procedure.

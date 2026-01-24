@@ -21,11 +21,20 @@ Use the `Select` component for standard dropdowns to ensure consistent appearanc
 - **Primary Color**: Use the `brand` color family (e.g., `text-brand-600`, `bg-brand-500`).
 - **Secondary Colors**: Use `gray` for neutral elements, `success` for completions, and `error` for destructive actions.
 
+
 ## Patterns
 
 ### Form Layouts
 - Use the `Label` component for all input labels.
 - Group filters in responsive grids (e.g., `grid-cols-1 sm:grid-cols-2 lg:grid-cols-5`).
+
+### Pagination & Limit Selection
+Semua tabel yang menggunakan paginasi **WAJIB** menyertakan pilihan limit data (Page Size Selection).
+- **Opsi Limit**: Wajib menyertakan opsi `10, 25, 50, dan 100`.
+- **Layout**: Dropdown limit dIletakkan dI area pagination sebelah kiri, sejajar dengan informasi total data.
+- **Navigasi**: Gunakan icon SVG (chevron) untuk tombol Previous/Next, bukan teks.
+- **Logic**: Mengubah limit harus me-reset halaman (page) kembali ke 1.
+- **Styling**: Gunakan Tailwind classes yang konsisten dengan `VedikaIndex` atau `UserManagement`.
 
 ### Dark Mode
 Ensure all components have `dark:` variant classes to support the dashboard's appearance toggling.

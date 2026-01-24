@@ -420,9 +420,26 @@ export default function VedikaIndex() {
                             </div>
 
                             {/* Pagination */}
-                            <div className="flex items-center justify-between px-5 py-4 border-t border-gray-200 dark:border-gray-700">
-                                <div className="text-sm text-gray-600 dark:text-gray-400">
-                                    Menampilkan {((filters.page - 1) * filters.limit) + 1} - {Math.min(filters.page * filters.limit, state.pagination.total)} dari {state.pagination.total} data
+                            <div className="flex flex-col sm:flex-row items-center justify-between px-5 py-4 border-t border-gray-200 dark:border-gray-700 gap-4">
+                                <div className="flex items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                            Data per halaman
+                                        </label>
+                                        <select
+                                            value={filters.limit}
+                                            onChange={(e) => handleFilterChange('limit', Number(e.target.value))}
+                                            className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-500 focus:border-brand-500"
+                                        >
+                                            <option value={10}>10</option>
+                                            <option value={25}>25</option>
+                                            <option value={50}>50</option>
+                                            <option value={100}>100</option>
+                                        </select>
+                                    </div>
+                                    <div className="text-sm text-gray-600 dark:text-gray-400">
+                                        Menampilkan {((filters.page - 1) * filters.limit) + 1} - {Math.min(filters.page * filters.limit, state.pagination.total)} dari {state.pagination.total} data
+                                    </div>
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <button
@@ -430,7 +447,9 @@ export default function VedikaIndex() {
                                         disabled={filters.page === 1}
                                         className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        Sebelumnya
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
                                     </button>
                                     <span className="px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-white">
                                         {filters.page} / {totalPages}
@@ -440,7 +459,9 @@ export default function VedikaIndex() {
                                         disabled={filters.page >= totalPages}
                                         className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                                     >
-                                        Selanjutnya
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7 7-7" />
+                                        </svg>
                                     </button>
                                 </div>
                             </div>

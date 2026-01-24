@@ -62,6 +62,13 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 			dashboard.GET("/dashboard/trend", r.dashboardHandler.GetDashboardTrend)
 		}
 
+		// Master data (require vedika.claim.edit_medical_data)
+		master := vedika.Group("")
+		master.Use(r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"))
+		{
+			master.GET("/icd10", r.workbenchHandler.SearchICD10)
+		}
+
 		// Index workbench - list endpoints (require vedika.read)
 		index := vedika.Group("")
 		index.Use(r.permMiddleware.RequirePermission("vedika.read"))
@@ -87,6 +94,9 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 
 			// Edit diagnosis (require vedika.claim.edit_medical_data)
 			claim.POST("/diagnosis/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateDiagnosis)
+
+			// Sync diagnoses (require vedika.claim.edit_medical_data)
+			claim.PUT("/diagnosis/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.SyncDiagnoses)
 
 			// Edit procedure (require vedika.claim.edit_medical_data)
 			claim.POST("/procedure/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)

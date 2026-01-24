@@ -138,6 +138,26 @@ func (h *WorkbenchHandler) UpdateDiagnosis(c *gin.Context) {
 	response.SuccessWithMessage(c, "Diagnosa berhasil diubah", nil)
 }
 
+// SyncDiagnoses handles PUT /admin/vedika/claim/:no_rawat/diagnosis
+func (h *WorkbenchHandler) SyncDiagnoses(c *gin.Context) {
+	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	var req entity.DiagnosisSyncRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	if err := h.workbenchSvc.SyncDiagnoses(c.Request.Context(), noRawat, req, actor, ip); err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "Daftar diagnosa berhasil diperbarui", nil)
+}
+
 // UpdateProcedure handles POST /admin/vedika/claim/:no_rawat/procedure
 func (h *WorkbenchHandler) UpdateProcedure(c *gin.Context) {
 	noRawat := decodeNoRawat(c.Param("no_rawat"))
@@ -210,15 +230,28 @@ func (h *WorkbenchHandler) parseIndexFilter(c *gin.Context) entity.IndexFilter {
 	return filter
 }
 
+// SearchICD10 handles GET /admin/vedika/icd10
+func (h *WorkbenchHandler) SearchICD10(c *gin.Context) {
+	query := c.Query("search")
+	if query == "" {
+		response.Success(c, []entity.ICD10Item{})
+		return
+	}
+
+	results, err := h.workbenchSvc.SearchICD10(c.Request.Context(), query)
+	if err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.Success(c, results)
+}
+
 // decodeNoRawat decodes URL-encoded no_rawat parameter.
 // Also strips leading slash added by Gin wildcard routes (e.g., /*no_rawat).
 func decodeNoRawat(encoded string) string {
-	// Strip leading slash from wildcard route (Gin adds it automatically)
-	if strings.HasPrefix(encoded, "/") {
-		encoded = strings.TrimPrefix(encoded, "/")
-	}
-	decoded, err := url.QueryUnescape(encoded)
-	if err != nil {
+	decoded, _ := url.QueryUnescape(strings.TrimPrefix(encoded, "/"))
+	if decoded == "" {
 		return encoded
 	}
 	return decoded

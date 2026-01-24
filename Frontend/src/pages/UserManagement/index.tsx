@@ -276,8 +276,8 @@ export default function UserManagement() {
                                                         <button
                                                             onClick={() => handleToggleStatus(user)}
                                                             className={`rounded-lg px-3 py-1.5 text-xs font-medium ${user.is_active
-                                                                    ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
-                                                                    : 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
+                                                                ? 'text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20'
+                                                                : 'text-green-600 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20'
                                                                 }`}
                                                         >
                                                             {user.is_active ? 'Nonaktifkan' : 'Aktifkan'}
@@ -294,39 +294,48 @@ export default function UserManagement() {
                 </div>
 
                 {/* Pagination */}
-                <div className="mt-4 flex items-center justify-between border-t border-gray-200 pt-4 dark:border-gray-700">
-                    <div className="text-sm text-gray-500 dark:text-gray-400">
-                        Menampilkan {users.length} dari {total} data
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-between border-t border-gray-200 pt-5 dark:border-gray-700 gap-4">
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <label className="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                Data per halaman
+                            </label>
+                            <select
+                                value={filter.limit || 25}
+                                onChange={(e) => handleFilterChange('limit', e.target.value)}
+                                className="px-2 py-1 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-brand-500 focus:border-brand-500"
+                            >
+                                <option value="10">10</option>
+                                <option value="25">25</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Menampilkan {users.length} dari {total} data
+                        </div>
                     </div>
                     <div className="flex items-center gap-2">
-                        {/* Page Size */}
-                        <select
-                            value={filter.limit || 25}
-                            onChange={(e) => handleFilterChange('limit', e.target.value)}
-                            className="h-9 rounded-lg border border-gray-300 bg-transparent px-2 text-sm outline-none focus:border-brand-500 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-                        >
-                            <option value="25">25</option>
-                            <option value="50">50</option>
-                            <option value="100">100</option>
-                        </select>
-
-                        {/* Prev/Next */}
                         <button
                             onClick={() => handlePageChange((filter.page || 1) - 1)}
                             disabled={(filter.page || 1) <= 1}
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600"
+                            className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            ←
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                            </svg>
                         </button>
-                        <span className="text-sm text-gray-600 dark:text-gray-300">
+                        <span className="px-3 py-1.5 text-sm font-medium text-gray-900 dark:text-white">
                             {filter.page} / {totalPages || 1}
                         </span>
                         <button
                             onClick={() => handlePageChange((filter.page || 1) + 1)}
                             disabled={(filter.page || 1) >= totalPages}
-                            className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm disabled:opacity-50 dark:border-gray-600"
+                            className="px-3 py-1.5 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                         >
-                            →
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
                         </button>
                     </div>
                 </div>

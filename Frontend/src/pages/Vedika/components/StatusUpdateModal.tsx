@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { vedikaService, type ClaimStatus } from '../../../services/vedikaService';
 
 interface StatusUpdateModalProps {
@@ -54,7 +55,7 @@ export default function StatusUpdateModal({
         }
     };
 
-    return (
+    return createPortal(
         <div className="fixed inset-0 z-50 flex items-center justify-center">
             {/* Backdrop */}
             <div
@@ -96,8 +97,8 @@ export default function StatusUpdateModal({
                                 <label
                                     key={option.value}
                                     className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${selectedStatus === option.value
-                                            ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
-                                            : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                                        ? 'border-brand-500 bg-brand-50 dark:bg-brand-500/10'
+                                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
                                         }`}
                                 >
                                     <input
@@ -171,6 +172,7 @@ export default function StatusUpdateModal({
                     </button>
                 </div>
             </div>
-        </div>
+        </div>,
+        document.body
     );
 }

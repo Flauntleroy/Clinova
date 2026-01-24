@@ -136,6 +136,12 @@ type ClaimDetail struct {
 	Status ClaimStatus `json:"status"`
 }
 
+// ICD10Item represents a master ICD-10 entry.
+type ICD10Item struct {
+	Kode string `json:"kode"`
+	Nama string `json:"nama"`
+}
+
 // DiagnosisItem represents a single diagnosis entry.
 type DiagnosisItem struct {
 	KodePenyakit string `json:"kode_penyakit"`
@@ -197,6 +203,11 @@ type DiagnosisUpdateRequest struct {
 	KodePenyakit string `json:"kode_penyakit" binding:"required"`
 	StatusDx     string `json:"status_dx"` // Utama / Sekunder
 	Prioritas    int    `json:"prioritas"`
+}
+
+// DiagnosisSyncRequest represents bulk update of diagnoses.
+type DiagnosisSyncRequest struct {
+	Diagnoses []DiagnosisUpdateRequest `json:"diagnoses" binding:"required,min=1"`
 }
 
 // ProcedureUpdateRequest represents request to update procedure.

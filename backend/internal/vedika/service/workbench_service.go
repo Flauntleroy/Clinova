@@ -208,6 +208,43 @@ func (s *WorkbenchService) UpdateDiagnosis(ctx context.Context, noRawat string, 
 	return nil
 }
 
+// SyncDiagnoses updates all diagnoses for an episode in one batch.
+func (s *WorkbenchService) SyncDiagnoses(ctx context.Context, noRawat string, req entity.DiagnosisSyncRequest, actor audit.Actor, ip string) error {
+	// 1. Get episode type (Ralan/Ranap) to pass to repository
+	statusLanjut, err := s.indexRepo.GetEpisodeType(ctx, noRawat)
+	if err != nil {
+		return fmt.Errorf("failed to get episode type: %w", err)
+	}
+
+	// 2. Sync diagnoses
+	if err := s.indexRepo.SyncDiagnoses(ctx, noRawat, req.Diagnoses, statusLanjut); err != nil {
+		return fmt.Errorf("failed to sync diagnoses: %w", err)
+	}
+
+	// Audit log - WRITE
+	s.auditLogger.LogUpdate(audit.UpdateParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "diagnosa_pasien",
+			PrimaryKey: map[string]string{"no_rawat": noRawat},
+		},
+		ChangedColumns: map[string]audit.ColumnChange{
+			"diagnoses": {Old: "multiple", New: "multiple_updated"},
+		},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Sinkronisasi diagnosa klaim %s (%d item)", noRawat, len(req.Diagnoses)),
+	})
+
+	return nil
+}
+
+// SearchICD10 searches for ICD-10 entries.
+func (s *WorkbenchService) SearchICD10(ctx context.Context, query string) ([]entity.ICD10Item, error) {
+	return s.indexRepo.SearchICD10(ctx, query)
+}
+
 // UpdateProcedure updates or adds a procedure.
 func (s *WorkbenchService) UpdateProcedure(ctx context.Context, noRawat string, req entity.ProcedureUpdateRequest, actor audit.Actor, ip string) error {
 	if err := s.indexRepo.AddProcedure(ctx, noRawat, req); err != nil {

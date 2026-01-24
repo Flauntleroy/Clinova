@@ -1,9 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     vedikaService,
     type IndexEpisode,
-    type ClaimStatus
+    type ClaimStatus,
+    type DiagnosisItem
 } from '../../../services/vedikaService';
+import authService from '../../../services/authService';
+import DiagnosisModal from './DiagnosisModal';
+import StatusUpdateModal from './StatusUpdateModal';
 
 interface ExpandedRowDetailProps {
     item: IndexEpisode;
@@ -19,159 +23,180 @@ const STATUS_OPTIONS: { value: ClaimStatus; label: string; color: string }[] = [
 ];
 
 export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetailProps) {
-    const [selectedStatus, setSelectedStatus] = useState<ClaimStatus>(item.status);
-    const [statusNote, setStatusNote] = useState('');
-    const [isUpdating, setIsUpdating] = useState(false);
-    const [updateMessage, setUpdateMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+    // UI State
+    const [diagnoses, setDiagnoses] = useState<DiagnosisItem[]>([]);
+    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
+    const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
 
-    const handleStatusUpdate = async () => {
-        if (selectedStatus === item.status && !statusNote) return;
+    const canEdit = authService.hasPermission('vedika.claim.edit_medical_data');
 
-        setIsUpdating(true);
-        setUpdateMessage(null);
-
+    const fetchData = useCallback(async () => {
+        setIsLoadingData(true);
         try {
-            await vedikaService.updateClaimStatus(item.no_rawat, {
-                status: selectedStatus,
-                catatan: statusNote || undefined,
-            });
-            setUpdateMessage({ type: 'success', text: 'Status berhasil diperbarui!' });
-            setStatusNote('');
-            onRefresh();
+            const detail = await vedikaService.getClaimDetail(item.no_rawat);
+            setDiagnoses(detail.data.diagnoses || []);
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'Gagal memperbarui status';
-            setUpdateMessage({ type: 'error', text: message });
+            console.error('Failed to fetch details:', error);
         } finally {
-            setIsUpdating(false);
+            setIsLoadingData(false);
         }
-    };
+    }, [item.no_rawat]);
+
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const currentStatusConfig = STATUS_OPTIONS.find(o => o.value === item.status) || STATUS_OPTIONS[0];
 
     return (
         <tr className="bg-gray-50/50 dark:bg-gray-800/30">
             <td colSpan={8} className="px-5 py-4">
-                {/* 4 Cards Grid - Clean Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
-                    {/* Card 1: Ubah Status */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    {/* Card 1: Status Klaim Panel */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col min-h-[220px]">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Ubah Status
+                            STATUS KLAIM
                         </h4>
 
-                        <div className="space-y-3">
-                            <div>
-                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-2">
-                                    Pilih Status Baru
-                                </label>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {STATUS_OPTIONS.map((option) => (
-                                        <button
-                                            key={option.value}
-                                            onClick={() => setSelectedStatus(option.value)}
-                                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${selectedStatus === option.value
-                                                ? `${option.color} ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-gray-800`
-                                                : `${option.color} opacity-60 hover:opacity-100`
-                                                }`}
-                                        >
-                                            {option.label}
-                                        </button>
-                                    ))}
+                        <div className="flex-grow">
+                            <section>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1">
+                                    Status Saat Ini
                                 </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm text-gray-500 dark:text-gray-400 mb-1.5">
-                                    Catatan (opsional)
-                                </label>
-                                <textarea
-                                    value={statusNote}
-                                    onChange={(e) => setStatusNote(e.target.value)}
-                                    placeholder="Tambahkan catatan untuk perubahan status..."
-                                    rows={2}
-                                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder:text-gray-400 focus:ring-2 focus:ring-brand-500 focus:border-brand-500"
-                                />
-                            </div>
-
-                            {updateMessage && (
-                                <div className={`px-3 py-2 rounded-lg text-xs ${updateMessage.type === 'success'
-                                    ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400'
-                                    : 'bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400'
-                                    }`}>
-                                    {updateMessage.text}
+                                <div
+                                    onClick={() => canEdit && setIsStatusModalOpen(true)}
+                                    className={`group flex items-start gap-2 p-1.5 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
+                                >
+                                    <div className="w-1 self-stretch bg-brand-500/50 rounded-full" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-bold text-gray-900 dark:text-white mb-0.5">
+                                            {currentStatusConfig.label}
+                                        </div>
+                                        <p className="text-[9px] text-gray-500 dark:text-gray-400 font-mono uppercase tracking-tight opacity-70">
+                                            {canEdit ? 'Klik untuk mengubah status' : 'Status episode'}
+                                        </p>
+                                    </div>
                                 </div>
-                            )}
-
-                            <button
-                                onClick={handleStatusUpdate}
-                                disabled={isUpdating || (selectedStatus === item.status && !statusNote)}
-                                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                            >
-                                {isUpdating ? (
-                                    <>
-                                        <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                        Menyimpan...
-                                    </>
-                                ) : (
-                                    <>
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                        </svg>
-                                        Simpan Status
-                                    </>
-                                )}
-                            </button>
+                            </section>
                         </div>
                     </div>
 
-                    {/* Card 2: Ubah Diagnosa */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    {/* Card 2: Diagnosa Panel (ICD-10) */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col min-h-[220px]">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Ubah Diagnosa
+                            DIAGNOSA (ICD-10)
                         </h4>
 
-                        <div className="flex flex-col items-center justify-center h-32 text-center">
-                            <svg className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                            </svg>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                                Fitur edit diagnosa (ICD-10)<br />akan segera tersedia
-                            </p>
+                        <div className="flex-grow">
+                            {isLoadingData ? (
+                                <div className="flex items-center justify-center h-full">
+                                    <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    {/* Diagnosa Utama Section */}
+                                    <section>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1">
+                                            Diagnosa Utama
+                                        </div>
+                                        {diagnoses.filter(d => d.status_dx === 'Utama').map((d) => (
+                                            <div
+                                                key={d.kode_penyakit}
+                                                onClick={() => canEdit && setIsDiagnosisModalOpen(true)}
+                                                className={`group flex items-start gap-2 p-1.5 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50' : 'cursor-default'}`}
+                                                title={d.nama_penyakit}
+                                            >
+                                                <div className="w-1 self-stretch bg-brand-500/50 rounded-full" />
+                                                <div className="flex-1 min-w-0">
+                                                    <span className="font-mono font-bold text-gray-900 dark:text-white mr-2">{d.kode_penyakit}</span>
+                                                    <span className="text-gray-600 dark:text-gray-300 text-xs truncate block">{d.nama_penyakit}</span>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </section>
+
+                                    {/* Diagnosa Tambahan Section */}
+                                    <section>
+                                        <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1">
+                                            Diagnosa Tambahan
+                                        </div>
+                                        <div className="space-y-1">
+                                            {diagnoses.filter(d => d.status_dx !== 'Utama').map((d) => (
+                                                <div
+                                                    key={d.kode_penyakit}
+                                                    onClick={() => canEdit && setIsDiagnosisModalOpen(true)}
+                                                    className={`group flex items-baseline gap-1.5 py-0.5 px-1 rounded transition-colors ${canEdit ? 'cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/20' : 'cursor-default'}`}
+                                                    title={d.nama_penyakit}
+                                                >
+                                                    <span className="font-mono font-bold text-[9px] text-gray-400 dark:text-gray-500 flex-shrink-0 w-8">{d.kode_penyakit}</span>
+                                                    <span className="text-gray-500 dark:text-gray-500 text-[10px] truncate block leading-tight">{d.nama_penyakit}</span>
+                                                </div>
+                                            ))}
+                                            {diagnoses.filter(d => d.status_dx !== 'Utama').length === 0 && (
+                                                <div className="text-[10px] text-gray-400 italic pl-1">
+                                                    Tidak ada diagnosa tambahan
+                                                </div>
+                                            )}
+                                        </div>
+                                    </section>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* Card 3: Ubah Prosedur */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                             Ubah Prosedur
                         </h4>
 
-                        <div className="flex flex-col items-center justify-center h-32 text-center">
-                            <svg className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex flex-col items-center justify-center flex-grow text-center py-4">
+                            <svg className="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
                             </svg>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                                Fitur edit prosedur (ICD-9-CM)<br />akan segera tersedia
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                                Segera hadir:<br />ICD-9-CM Editor
                             </p>
                         </div>
                     </div>
 
                     {/* Card 4: Unggah Berkas */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
                             Unggah Berkas
                         </h4>
 
-                        <div className="flex flex-col items-center justify-center h-32 text-center">
-                            <svg className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div className="flex flex-col items-center justify-center flex-grow text-center py-4">
+                            <svg className="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <p className="text-sm text-gray-400 dark:text-gray-500">
-                                Fitur upload keperawatan &amp; resume<br />akan segera tersedia
+                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
+                                Segera hadir:<br />Digital Medical Docs
                             </p>
                         </div>
                     </div>
                 </div>
             </td>
+
+            {/* Status Management Modal */}
+            <StatusUpdateModal
+                isOpen={isStatusModalOpen}
+                onClose={() => setIsStatusModalOpen(false)}
+                noRawat={item.no_rawat}
+                currentStatus={item.status}
+                onSuccess={onRefresh}
+            />
+
+            {/* Diagnosis Management Modal */}
+            <DiagnosisModal
+                isOpen={isDiagnosisModalOpen}
+                onClose={() => setIsDiagnosisModalOpen(false)}
+                noRawat={item.no_rawat}
+                initialDiagnoses={diagnoses}
+                onSuccess={fetchData}
+            />
         </tr>
     );
 }

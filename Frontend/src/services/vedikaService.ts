@@ -497,6 +497,20 @@ export interface DiagnosisUpdateRequest {
     prioritas?: number;
 }
 
+export interface DiagnosisSyncRequest {
+    diagnoses: DiagnosisUpdateRequest[];
+}
+
+export interface ICD10Item {
+    kode: string;
+    nama: string;
+}
+
+export interface ICD10SearchResponse {
+    success: boolean;
+    data: ICD10Item[];
+}
+
 export interface ProcedureUpdateRequest {
     kode: string;
     prioritas?: number;
@@ -620,6 +634,23 @@ export const vedikaService = {
     // Resume (Button click - needs global loading)
     getResume: async (noRawat: string): Promise<ResumeResponse> => {
         return apiRequest<ResumeResponse>(API_ENDPOINTS.VEDIKA.CLAIM_RESUME(noRawat));
+    },
+
+    // Search ICD-10
+    searchICD10: async (query: string): Promise<ICD10Item[]> => {
+        const url = `${API_ENDPOINTS.VEDIKA.ICD10_SEARCH}?search=${encodeURIComponent(query)}`;
+        return apiRequest<ICD10SearchResponse>(url, {}, { showGlobalLoading: false }).then(resp => resp.data);
+    },
+
+    // Sync Diagnoses (Bulk)
+    syncDiagnoses: async (
+        noRawat: string,
+        data: DiagnosisSyncRequest
+    ): Promise<SuccessMessageResponse> => {
+        return apiRequest<SuccessMessageResponse>(API_ENDPOINTS.VEDIKA.CLAIM_DIAGNOSIS(noRawat), {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        });
     },
 };
 
