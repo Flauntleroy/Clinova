@@ -101,9 +101,45 @@ export const TokenStorage = {
 // API Helper - exported for use in other services
 import { loadingEventBus } from '../utils/loadingEventBus';
 
+// Flag to prevent multiple refresh attempts
+let isRefreshing = false;
+let refreshPromise: Promise<boolean> | null = null;
+
+async function tryRefreshToken(): Promise<boolean> {
+    const refreshToken = TokenStorage.getRefreshToken();
+    if (!refreshToken) {
+        return false;
+    }
+
+    try {
+        const response = await fetch(API_ENDPOINTS.AUTH.REFRESH, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+
+        if (!response.ok) {
+            return false;
+        }
+
+        const data = await response.json();
+        if (data.success && data.data?.tokens) {
+            TokenStorage.setTokens(
+                data.data.tokens.access_token,
+                data.data.tokens.refresh_token
+            );
+            return true;
+        }
+    } catch {
+        // Refresh failed
+    }
+    return false;
+}
+
 export async function apiRequest<T>(
     url: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    _isRetry = false
 ): Promise<T> {
     const accessToken = TokenStorage.getAccessToken();
 
@@ -116,8 +152,10 @@ export async function apiRequest<T>(
         (headers as Record<string, string>)['Authorization'] = `Bearer ${accessToken}`;
     }
 
-    // Start loading indicator
-    loadingEventBus.startRequest();
+    // Start loading indicator (only on first request, not retry)
+    if (!_isRetry) {
+        loadingEventBus.startRequest();
+    }
 
     try {
         const response = await fetch(url, {
@@ -128,10 +166,25 @@ export async function apiRequest<T>(
         const data = await response.json();
 
         if (!response.ok) {
-            // Handle 401 Unauthorized - clear all auth data and redirect to login
-            if (response.status === 401) {
+            // Handle 401 Unauthorized - try refresh token first
+            if (response.status === 401 && !_isRetry) {
+                // Avoid multiple simultaneous refresh attempts
+                if (!isRefreshing) {
+                    isRefreshing = true;
+                    refreshPromise = tryRefreshToken();
+                }
+
+                const refreshed = await refreshPromise;
+                isRefreshing = false;
+                refreshPromise = null;
+
+                if (refreshed) {
+                    // Retry the original request with new token
+                    return apiRequest<T>(url, options, true);
+                }
+
+                // Refresh failed - clear and redirect
                 TokenStorage.clear();
-                // Redirect to login page if not already there
                 if (!window.location.pathname.includes('/signin')) {
                     window.location.href = '/signin';
                 }
@@ -141,8 +194,10 @@ export async function apiRequest<T>(
 
         return data as T;
     } finally {
-        // Always stop loading, even on error
-        loadingEventBus.endRequest();
+        // Always stop loading, even on error (only on first request)
+        if (!_isRetry) {
+            loadingEventBus.endRequest();
+        }
     }
 }
 
