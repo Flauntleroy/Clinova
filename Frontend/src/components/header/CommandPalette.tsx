@@ -1,7 +1,11 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router';
-import { getAllMenuItems, fuzzySearch, MenuItem } from '../../config/menuConfig';
 import { useAuth } from '../../context/AuthContext';
+import {
+    getFilteredFlatMenuItems,
+    fuzzySearch,
+    FlatMenuItem
+} from '../../config/menuUtils';
 
 interface CommandPaletteProps {
     isOpen: boolean;
@@ -18,11 +22,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     const { can } = useAuth();
 
     // Get all menu items filtered by permissions
-    const allItems = useMemo(() => {
-        return getAllMenuItems().filter(
-            (item) => !item.permission || can(item.permission)
-        );
-    }, [can]);
+    const allItems = useMemo(() => getFilteredFlatMenuItems(can), [can]);
 
     // Filter items based on search query
     const filteredItems = useMemo(() => {
@@ -32,18 +32,15 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
         return fuzzySearch(allItems, query);
     }, [allItems, query, showAllMenus]);
 
-    // Group items by category
+    // Group items by section
     const groupedItems = useMemo(() => {
-        const groups: Record<string, MenuItem[]> = {
-            menu: [],
-            admin: [],
-            others: [],
-        };
+        const groups: Record<string, FlatMenuItem[]> = {};
 
         filteredItems.forEach((item) => {
-            if (groups[item.category]) {
-                groups[item.category].push(item);
+            if (!groups[item.sectionId]) {
+                groups[item.sectionId] = [];
             }
+            groups[item.sectionId].push(item);
         });
 
         return groups;
@@ -98,7 +95,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
     );
 
     // Navigate to selected item
-    const handleSelectItem = (item: MenuItem) => {
+    const handleSelectItem = (item: FlatMenuItem) => {
         navigate(item.path);
         onClose();
     };
@@ -131,8 +128,8 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
 
     if (!isOpen) return null;
 
-    const getCategoryLabel = (category: string) => {
-        switch (category) {
+    const getSectionLabel = (sectionId: string) => {
+        switch (sectionId) {
             case 'menu':
                 return 'Menu';
             case 'admin':
@@ -140,11 +137,12 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
             case 'others':
                 return 'Others';
             default:
-                return category;
+                return sectionId;
         }
     };
 
     let currentIndex = 0;
+    const sectionIds = Object.keys(groupedItems);
 
     return (
         <div
@@ -220,14 +218,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose }) => {
                         </div>
                     ) : (
                         <>
-                            {(['menu', 'admin', 'others'] as const).map((category) => {
-                                const items = groupedItems[category];
-                                if (items.length === 0) return null;
+                            {sectionIds.map((sectionId) => {
+                                const items = groupedItems[sectionId];
+                                if (!items || items.length === 0) return null;
 
                                 return (
-                                    <div key={category} className="mb-2">
+                                    <div key={sectionId} className="mb-2">
                                         <div className="px-4 py-2 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-                                            {getCategoryLabel(category)}
+                                            {getSectionLabel(sectionId)}
                                         </div>
                                         {items.map((item) => {
                                             const itemIndex = currentIndex++;
