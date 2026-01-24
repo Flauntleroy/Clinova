@@ -179,6 +179,19 @@ type StatusUpdateRequest struct {
 	Catatan string      `json:"catatan"`
 }
 
+// BatchStatusUpdateRequest represents request to batch update claim statuses.
+type BatchStatusUpdateRequest struct {
+	NoRawatList []string    `json:"no_rawat_list" binding:"required,min=1"`
+	Status      ClaimStatus `json:"status" binding:"required"`
+	Catatan     string      `json:"catatan"`
+}
+
+// BatchUpdateResult contains result of batch update operation.
+type BatchUpdateResult struct {
+	Updated int `json:"updated"`
+	Failed  int `json:"failed"`
+}
+
 // DiagnosisUpdateRequest represents request to update diagnosis.
 type DiagnosisUpdateRequest struct {
 	KodePenyakit string `json:"kode_penyakit" binding:"required"`

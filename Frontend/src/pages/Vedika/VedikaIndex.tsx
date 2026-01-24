@@ -11,6 +11,7 @@ import DatePicker from '../../components/form/date-picker';
 import Select from '../../components/form/Select';
 import Label from '../../components/form/Label';
 import StatusUpdateModal from './components/StatusUpdateModal';
+import BatchStatusModal from './components/BatchStatusModal';
 import ExpandedRowDetail from './components/ExpandedRowDetail';
 
 // =============================================================================
@@ -80,7 +81,9 @@ export default function VedikaIndex() {
 
     const [state, setState] = useState<IndexState>({ status: 'idle' });
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [selectedRows, setSelectedRows] = useState<Set<string>>(new Set());
     const [statusModal, setStatusModal] = useState<{ isOpen: boolean; noRawat: string; currentStatus: ClaimStatus } | null>(null);
+    const [batchModal, setBatchModal] = useState<{ isOpen: boolean } | null>(null);
 
     const fetchData = useCallback(async () => {
         setState({ status: 'loading' });
@@ -242,6 +245,55 @@ export default function VedikaIndex() {
                     </div>
                 </div>
 
+                {/* Batch Action Bar */}
+                {selectedRows.size > 0 && (
+                    <div className="rounded-xl border border-brand-200 bg-brand-50 dark:bg-brand-900/20 dark:border-brand-800 px-5 py-3 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-brand-500 text-white flex items-center justify-center text-sm font-bold">
+                                {selectedRows.size}
+                            </div>
+                            <span className="text-sm font-medium text-brand-700 dark:text-brand-300">
+                                item dipilih
+                            </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={() => setBatchModal({ isOpen: true })}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition-colors"
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                Ubah Status
+                            </button>
+                            <button
+                                onClick={() => setSelectedRows(new Set())}
+                                className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Batal
+                            </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* Batch Status Modal */}
+                {batchModal?.isOpen && (
+                    <BatchStatusModal
+                        isOpen={true}
+                        onClose={() => {
+                            setBatchModal(null);
+                            setSelectedRows(new Set());
+                        }}
+                        selectedCount={selectedRows.size}
+                        selectedNoRawatList={Array.from(selectedRows)}
+                        onSuccess={() => {
+                            setBatchModal(null);
+                            setSelectedRows(new Set());
+                            fetchData();
+                        }}
+                    />
+                )}
+
                 {/* Data Table */}
                 <div className="rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-white/[0.03] overflow-hidden">
                     {state.status === 'loading' && <LoadingState />}
@@ -253,6 +305,21 @@ export default function VedikaIndex() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                            <th className="px-3 py-3">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={state.status === 'success' && selectedRows.size === state.items.length && state.items.length > 0}
+                                                    onChange={(e) => {
+                                                        e.stopPropagation();
+                                                        if (e.target.checked && state.status === 'success') {
+                                                            setSelectedRows(new Set(state.items.map(i => i.no_rawat)));
+                                                        } else {
+                                                            setSelectedRows(new Set());
+                                                        }
+                                                    }}
+                                                    className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                                                />
+                                            </th>
                                             <th className="text-left px-5 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">No Rawat</th>
                                             <th className="text-left px-5 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Pasien</th>
                                             <th className="text-left px-5 py-3 text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Tgl Pelayanan</th>
@@ -266,9 +333,25 @@ export default function VedikaIndex() {
                                         {state.items.map((item) => (
                                             <React.Fragment key={item.no_rawat}>
                                                 <tr
-                                                    className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer ${expandedRows.has(item.no_rawat) ? 'bg-gray-50 dark:bg-gray-800/20' : ''}`}
+                                                    className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer ${expandedRows.has(item.no_rawat) ? 'bg-gray-50 dark:bg-gray-800/20' : ''} ${selectedRows.has(item.no_rawat) ? 'bg-brand-50 dark:bg-brand-900/10' : ''}`}
                                                     onClick={() => toggleRow(item.no_rawat)}
                                                 >
+                                                    <td className="px-3 py-4" onClick={(e) => e.stopPropagation()}>
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={selectedRows.has(item.no_rawat)}
+                                                            onChange={(e) => {
+                                                                const newSelected = new Set(selectedRows);
+                                                                if (e.target.checked) {
+                                                                    newSelected.add(item.no_rawat);
+                                                                } else {
+                                                                    newSelected.delete(item.no_rawat);
+                                                                }
+                                                                setSelectedRows(newSelected);
+                                                            }}
+                                                            className="w-4 h-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+                                                        />
+                                                    </td>
                                                     <td className="px-5 py-4">
                                                         <div className="flex items-center gap-2">
                                                             <svg

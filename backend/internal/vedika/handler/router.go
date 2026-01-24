@@ -78,6 +78,9 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 			// View basic claim detail (require vedika.claim.read)
 			claim.GET("/detail/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
 
+			// Batch update status (require vedika.claim.update_status)
+			claim.POST("/batch-status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.BatchUpdateStatus)
+
 			// Routes with actions - use /action/*no_rawat pattern to handle slashes in no_rawat
 			// Update status (require vedika.claim.update_status)
 			claim.POST("/status/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)

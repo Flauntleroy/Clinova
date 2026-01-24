@@ -476,6 +476,21 @@ export interface StatusUpdateRequest {
     catatan?: string;
 }
 
+export interface BatchStatusUpdateRequest {
+    no_rawat_list: string[];
+    status: ClaimStatus;
+    catatan?: string;
+}
+
+export interface BatchUpdateResponse {
+    success: boolean;
+    message: string;
+    data: {
+        updated: number;
+        failed: number;
+    };
+}
+
 export interface DiagnosisUpdateRequest {
     kode_penyakit: string;
     status_dx?: 'Utama' | 'Sekunder';
@@ -565,6 +580,16 @@ export const vedikaService = {
         data: StatusUpdateRequest
     ): Promise<SuccessMessageResponse> => {
         return apiRequest<SuccessMessageResponse>(API_ENDPOINTS.VEDIKA.CLAIM_STATUS(noRawat), {
+            method: 'POST',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // Batch Status Update (KEEP global loading - mutation operation)
+    batchUpdateStatus: async (
+        data: BatchStatusUpdateRequest
+    ): Promise<BatchUpdateResponse> => {
+        return apiRequest<BatchUpdateResponse>(API_ENDPOINTS.VEDIKA.BATCH_STATUS, {
             method: 'POST',
             body: JSON.stringify(data),
         });

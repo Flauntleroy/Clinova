@@ -136,6 +136,51 @@ func (s *WorkbenchService) UpdateClaimStatus(ctx context.Context, noRawat string
 	return nil
 }
 
+// BatchUpdateClaimStatus updates the status of multiple claims at once.
+func (s *WorkbenchService) BatchUpdateClaimStatus(ctx context.Context, req entity.BatchStatusUpdateRequest, actor audit.Actor, ip string) (*entity.BatchUpdateResult, error) {
+	// Validate status
+	if !req.Status.IsValid() {
+		return nil, fmt.Errorf("invalid status: %s", req.Status)
+	}
+
+	if len(req.NoRawatList) == 0 {
+		return nil, fmt.Errorf("no_rawat_list is required")
+	}
+
+	result := &entity.BatchUpdateResult{}
+
+	for _, noRawat := range req.NoRawatList {
+		// Get current status for audit
+		oldStatus, _ := s.indexRepo.GetEpisodeStatus(ctx, noRawat)
+
+		// Update status
+		if err := s.indexRepo.UpdateClaimStatus(ctx, noRawat, req.Status, actor.Username, req.Catatan); err != nil {
+			result.Failed++
+			continue
+		}
+		result.Updated++
+
+		// Audit log - WRITE
+		s.auditLogger.LogUpdate(audit.UpdateParams{
+			Module: "vedika",
+			Entity: audit.Entity{
+				Table:      "mlite_vedika",
+				PrimaryKey: map[string]string{"no_rawat": noRawat},
+			},
+			ChangedColumns: map[string]audit.ColumnChange{
+				"status": {Old: string(oldStatus), New: string(req.Status)},
+			},
+			Where:       map[string]interface{}{"no_rawat": noRawat},
+			BusinessKey: noRawat,
+			Actor:       actor,
+			IP:          ip,
+			Summary:     fmt.Sprintf("Batch update status klaim %s dari %s ke %s", noRawat, oldStatus, req.Status),
+		})
+	}
+
+	return result, nil
+}
+
 // UpdateDiagnosis updates or adds a diagnosis.
 func (s *WorkbenchService) UpdateDiagnosis(ctx context.Context, noRawat string, req entity.DiagnosisUpdateRequest, actor audit.Actor, ip string) error {
 	if err := s.indexRepo.AddDiagnosis(ctx, noRawat, req); err != nil {

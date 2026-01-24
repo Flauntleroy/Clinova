@@ -48,7 +48,7 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
 
     return (
         <tr className="bg-gray-50/50 dark:bg-gray-800/30">
-            <td colSpan={7} className="px-5 py-4">
+            <td colSpan={8} className="px-5 py-4">
                 {/* 4 Cards Grid - Clean Style */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
@@ -69,8 +69,8 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                                             key={option.value}
                                             onClick={() => setSelectedStatus(option.value)}
                                             className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${selectedStatus === option.value
-                                                    ? `${option.color} ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-gray-800`
-                                                    : `${option.color} opacity-60 hover:opacity-100`
+                                                ? `${option.color} ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-gray-800`
+                                                : `${option.color} opacity-60 hover:opacity-100`
                                                 }`}
                                         >
                                             {option.label}
@@ -94,8 +94,8 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
 
                             {updateMessage && (
                                 <div className={`px-3 py-2 rounded-lg text-xs ${updateMessage.type === 'success'
-                                        ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400'
-                                        : 'bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400'
+                                    ? 'bg-success-50 text-success-700 dark:bg-success-500/10 dark:text-success-400'
+                                    : 'bg-error-50 text-error-700 dark:bg-error-500/10 dark:text-error-400'
                                     }`}>
                                     {updateMessage.text}
                                 </div>

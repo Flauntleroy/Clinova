@@ -31,6 +31,7 @@ export const API_ENDPOINTS = {
     CLAIM: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/detail/${noRawat}`,
     CLAIM_FULL: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/full/${noRawat}`,
     CLAIM_STATUS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/status/${noRawat}`,
+    BATCH_STATUS: `${API_BASE_URL}/admin/vedika/claim/batch-status`,
     CLAIM_DIAGNOSIS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/diagnosis/${noRawat}`,
     CLAIM_PROCEDURE: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/procedure/${noRawat}`,
     CLAIM_DOCUMENTS: (noRawat: string) => `${API_BASE_URL}/admin/vedika/claim/documents/${noRawat}`,

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -95,6 +96,26 @@ func (h *WorkbenchHandler) UpdateStatus(c *gin.Context) {
 	}
 
 	response.SuccessWithMessage(c, "Status berhasil diubah", gin.H{"status": req.Status})
+}
+
+// BatchUpdateStatus handles POST /admin/vedika/claim/batch-status
+func (h *WorkbenchHandler) BatchUpdateStatus(c *gin.Context) {
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	var req entity.BatchStatusUpdateRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	result, err := h.workbenchSvc.BatchUpdateClaimStatus(c.Request.Context(), req, actor, ip)
+	if err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, fmt.Sprintf("%d klaim berhasil diupdate", result.Updated), result)
 }
 
 // UpdateDiagnosis handles POST /admin/vedika/claim/:no_rawat/diagnosis
