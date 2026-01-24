@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 
@@ -189,7 +190,12 @@ func (h *WorkbenchHandler) parseIndexFilter(c *gin.Context) entity.IndexFilter {
 }
 
 // decodeNoRawat decodes URL-encoded no_rawat parameter.
+// Also strips leading slash added by Gin wildcard routes (e.g., /*no_rawat).
 func decodeNoRawat(encoded string) string {
+	// Strip leading slash from wildcard route (Gin adds it automatically)
+	if strings.HasPrefix(encoded, "/") {
+		encoded = strings.TrimPrefix(encoded, "/")
+	}
 	decoded, err := url.QueryUnescape(encoded)
 	if err != nil {
 		return encoded

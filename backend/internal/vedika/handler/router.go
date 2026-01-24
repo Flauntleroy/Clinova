@@ -75,23 +75,24 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 			// View FULL claim detail - all 14 sections (require vedika.claim.read)
 			claim.GET("/full/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.claimDetailHandler.GetClaimFullDetail)
 
-			// View basic claim (require vedika.claim.read)
-			claim.GET("/:no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
+			// View basic claim detail (require vedika.claim.read)
+			claim.GET("/detail/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read"), r.workbenchHandler.GetClaimDetail)
 
+			// Routes with actions - use /action/*no_rawat pattern to handle slashes in no_rawat
 			// Update status (require vedika.claim.update_status)
-			claim.POST("/:no_rawat/status", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)
+			claim.POST("/status/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.update_status"), r.workbenchHandler.UpdateStatus)
 
 			// Edit diagnosis (require vedika.claim.edit_medical_data)
-			claim.POST("/:no_rawat/diagnosis", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateDiagnosis)
+			claim.POST("/diagnosis/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateDiagnosis)
 
 			// Edit procedure (require vedika.claim.edit_medical_data)
-			claim.POST("/:no_rawat/procedure", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)
+			claim.POST("/procedure/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.UpdateProcedure)
 
 			// Upload documents (require vedika.claim.upload_document)
-			claim.POST("/:no_rawat/documents", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)
+			claim.POST("/documents/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)
 
 			// View resume (require vedika.claim.read_resume)
-			claim.GET("/:no_rawat/resume", r.permMiddleware.RequirePermission("vedika.claim.read_resume"), r.workbenchHandler.GetResume)
+			claim.GET("/resume/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read_resume"), r.workbenchHandler.GetResume)
 		}
 	}
 }

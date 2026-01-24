@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router';
 import PageMeta from '../../components/common/PageMeta';
 import {
@@ -10,6 +10,8 @@ import {
 import DatePicker from '../../components/form/date-picker';
 import Select from '../../components/form/Select';
 import Label from '../../components/form/Label';
+import StatusUpdateModal from './components/StatusUpdateModal';
+import ExpandedRowDetail from './components/ExpandedRowDetail';
 
 // =============================================================================
 // TYPES
@@ -77,6 +79,8 @@ export default function VedikaIndex() {
     });
 
     const [state, setState] = useState<IndexState>({ status: 'idle' });
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [statusModal, setStatusModal] = useState<{ isOpen: boolean; noRawat: string; currentStatus: ClaimStatus } | null>(null);
 
     const fetchData = useCallback(async () => {
         setState({ status: 'loading' });
@@ -112,6 +116,22 @@ export default function VedikaIndex() {
     };
 
     const totalPages = state.status === 'success' ? Math.ceil(state.pagination.total / state.pagination.limit) : 0;
+
+    const toggleRow = (noRawat: string) => {
+        setExpandedRows(prev => {
+            const next = new Set(prev);
+            if (next.has(noRawat)) {
+                next.delete(noRawat);
+            } else {
+                next.add(noRawat);
+            }
+            return next;
+        });
+    };
+
+    const handleStatusSuccess = () => {
+        fetchData(); // Refresh data after status update
+    };
 
     return (
         <>
@@ -244,38 +264,73 @@ export default function VedikaIndex() {
                                     </thead>
                                     <tbody className="divide-y divide-gray-100 dark:divide-gray-800">
                                         {state.items.map((item) => (
-                                            <tr key={item.no_rawat} className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-                                                <td className="px-5 py-4">
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{item.no_rawat}</div>
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400">RM: {item.no_rm}</div>
-                                                </td>
-                                                <td className="px-5 py-4">
-                                                    <div className="text-sm font-medium text-gray-900 dark:text-white">{item.nama_pasien}</div>
-                                                    <div className="text-xs text-gray-500 dark:text-gray-400">{item.cara_bayar}</div>
-                                                </td>
-                                                <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
-                                                    {formatDate(item.tgl_pelayanan)}
-                                                </td>
-                                                <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.unit}</td>
-                                                <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.dokter}</td>
-                                                <td className="px-5 py-4">
-                                                    <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[item.status].bgColor} ${STATUS_CONFIG[item.status].color}`}>
-                                                        {STATUS_CONFIG[item.status].label}
-                                                    </span>
-                                                </td>
-                                                <td className="px-5 py-4 text-center">
-                                                    <Link
-                                                        to={`/vedika/claim/${encodeURIComponent(item.no_rawat)}`}
-                                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-brand-600 dark:text-brand-400 bg-brand-50 dark:bg-brand-500/10 rounded-lg hover:bg-brand-100 dark:hover:bg-brand-500/20 transition-colors"
-                                                    >
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                                                        </svg>
-                                                        Lihat
-                                                    </Link>
-                                                </td>
-                                            </tr>
+                                            <React.Fragment key={item.no_rawat}>
+                                                <tr
+                                                    className={`hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors cursor-pointer ${expandedRows.has(item.no_rawat) ? 'bg-gray-50 dark:bg-gray-800/20' : ''}`}
+                                                    onClick={() => toggleRow(item.no_rawat)}
+                                                >
+                                                    <td className="px-5 py-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <svg
+                                                                className={`w-4 h-4 text-gray-400 transition-transform ${expandedRows.has(item.no_rawat) ? 'rotate-90' : ''}`}
+                                                                fill="none"
+                                                                viewBox="0 0 24 24"
+                                                                stroke="currentColor"
+                                                            >
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                                            </svg>
+                                                            <div>
+                                                                <div className="text-sm font-medium text-gray-900 dark:text-white">{item.no_rawat}</div>
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">RM: {item.no_rm}</div>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <div className="text-sm font-medium text-gray-900 dark:text-white">{item.nama_pasien}</div>
+                                                        <div className="text-xs text-gray-500 dark:text-gray-400">{item.cara_bayar}</div>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">
+                                                        {formatDate(item.tgl_pelayanan)}
+                                                    </td>
+                                                    <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.unit}</td>
+                                                    <td className="px-5 py-4 text-sm text-gray-700 dark:text-gray-300">{item.dokter}</td>
+                                                    <td className="px-5 py-4">
+                                                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${STATUS_CONFIG[item.status].bgColor} ${STATUS_CONFIG[item.status].color}`}>
+                                                            {STATUS_CONFIG[item.status].label}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-5 py-4 text-center" onClick={(e) => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-center gap-2">
+                                                            <button
+                                                                onClick={() => setStatusModal({ isOpen: true, noRawat: item.no_rawat, currentStatus: item.status })}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-white bg-brand-500 rounded-lg hover:bg-brand-600 transition-colors"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                                                </svg>
+                                                                Status
+                                                            </button>
+                                                            <Link
+                                                                to={`/vedika/claim/${encodeURIComponent(item.no_rawat)}`}
+                                                                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                                            >
+                                                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                                                </svg>
+                                                                Lihat
+                                                            </Link>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                                {expandedRows.has(item.no_rawat) && (
+                                                    <ExpandedRowDetail
+                                                        key={`${item.no_rawat}-expanded`}
+                                                        item={item}
+                                                        onRefresh={fetchData}
+                                                    />
+                                                )}
+                                            </React.Fragment>
                                         ))}
                                     </tbody>
                                 </table>
@@ -310,6 +365,17 @@ export default function VedikaIndex() {
                     )}
                 </div>
             </div>
+
+            {/* Status Update Modal */}
+            {statusModal && (
+                <StatusUpdateModal
+                    isOpen={statusModal.isOpen}
+                    onClose={() => setStatusModal(null)}
+                    noRawat={statusModal.noRawat}
+                    currentStatus={statusModal.currentStatus}
+                    onSuccess={handleStatusSuccess}
+                />
+            )}
         </>
     );
 }
@@ -368,3 +434,7 @@ function EmptyState() {
         </div>
     );
 }
+
+
+
+
