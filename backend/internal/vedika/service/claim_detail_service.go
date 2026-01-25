@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/clinova/simrs/backend/internal/vedika/entity"
 	"github.com/clinova/simrs/backend/internal/vedika/repository"
@@ -45,6 +46,20 @@ func (s *ClaimDetailService) GetClaimFullDetail(
 	detail, err := s.claimRepo.GetClaimFullDetail(ctx, noRawat)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get claim detail: %w", err)
+	}
+
+	// Fetch dynamic legacy webapp URL from settings
+	baseURL, _ := s.settingsRepo.GetLegacyWebAppURL(ctx)
+	if baseURL != "" {
+		// Ensure suffix matches module expectation
+		if !strings.HasSuffix(baseURL, "/") {
+			baseURL += "/"
+		}
+
+		for i := range detail.Documents {
+			// Append 'berkasrawat/' as required by user (code-level pathing)
+			detail.Documents[i].FileURL = baseURL + "berkasrawat/" + detail.Documents[i].LokasiFile
+		}
 	}
 
 	// Audit log - READ

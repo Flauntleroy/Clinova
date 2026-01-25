@@ -198,11 +198,113 @@ func (h *WorkbenchHandler) SyncProcedures(c *gin.Context) {
 	response.SuccessWithMessage(c, "Daftar prosedur berhasil diperbarui", nil)
 }
 
-// UploadDocument handles POST /admin/vedika/claim/:no_rawat/documents
-// Note: File upload handling would require multipart form parsing
+// UploadDocument handles POST /admin/vedika/claim/documents/:no_rawat
 func (h *WorkbenchHandler) UploadDocument(c *gin.Context) {
-	// TODO: Implement file upload handling
-	response.Error(c, http.StatusNotImplemented, "NOT_IMPLEMENTED", "Document upload not yet implemented")
+	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	kode := c.PostForm("kode")
+	if kode == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "kode (category) is required")
+		return
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		response.BadRequest(c, "INVALID_FILE", "File is required")
+		return
+	}
+
+	// Clean noRawat for filename (replace slashes with underscores)
+	cleanNoRawat := strings.ReplaceAll(noRawat, "/", "_")
+	filename := fmt.Sprintf("%s_%s_%s", cleanNoRawat, kode, file.Filename)
+
+	// In simrs legacy, path is pages/upload/filename
+	dbPath := "pages/upload/" + filename
+
+	// Derive physical path from dynamic URL setting
+	// Default to 'webapps' if fetch fails to avoid breaking existing setups
+	subFolder := "webapps"
+	if baseURL, err := h.workbenchSvc.GetLegacyWebAppURL(c.Request.Context()); err == nil && baseURL != "" {
+		if u, err := url.Parse(baseURL); err == nil {
+			// Extract path from URL (e.g., "/webapps/" -> "webapps")
+			cleanedPath := strings.Trim(u.Path, "/")
+			subFolder = cleanedPath
+		}
+	}
+
+	// build uploadDir relative to Clinova root
+	// If subFolder is empty, it points to Laragon www root
+	uploadDir := "../../"
+	if subFolder != "" {
+		uploadDir += subFolder + "/"
+	}
+	uploadDir += "berkasrawat/pages/upload/"
+
+	if err := c.SaveUploadedFile(file, uploadDir+filename); err != nil {
+		response.Error(c, http.StatusInternalServerError, "UPLOAD_FAILED", "Failed to save file: "+err.Error())
+		return
+	}
+
+	if err := h.workbenchSvc.AddDigitalDocument(c.Request.Context(), noRawat, kode, dbPath, actor, ip); err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "Berkas berhasil diunggah", gin.H{"path": dbPath})
+}
+
+// DeleteDocument handles DELETE /admin/vedika/claim/documents/:no_rawat
+func (h *WorkbenchHandler) DeleteDocument(c *gin.Context) {
+	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	kode := c.Query("kode")
+	path := c.Query("path")
+
+	if kode == "" || path == "" {
+		response.BadRequest(c, "INVALID_PARAMS", "kode and path are required")
+		return
+	}
+
+	if err := h.workbenchSvc.DeleteDigitalDocument(c.Request.Context(), noRawat, kode, path, actor, ip); err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "Berkas berhasil dihapus", nil)
+}
+
+// GetMasterDigitalDocs handles GET /admin/vedika/documents/master
+func (h *WorkbenchHandler) GetMasterDigitalDocs(c *gin.Context) {
+	results, err := h.workbenchSvc.GetMasterDigitalDocs(c.Request.Context())
+	if err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+	response.Success(c, results)
+}
+
+// SaveResume handles POST /admin/vedika/claim/resume/:no_rawat
+func (h *WorkbenchHandler) SaveResume(c *gin.Context) {
+	noRawat := decodeNoRawat(c.Param("no_rawat"))
+	actor := getActor(c)
+	ip := c.ClientIP()
+
+	var req entity.MedicalResume
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "INVALID_REQUEST", "Invalid request body")
+		return
+	}
+
+	if err := h.workbenchSvc.UpdateResume(c.Request.Context(), noRawat, &req, actor, ip); err != nil {
+		handleVedikaError(c, err)
+		return
+	}
+
+	response.SuccessWithMessage(c, "Resume medis berhasil disimpan", nil)
 }
 
 // GetResume handles GET /admin/vedika/claim/:no_rawat/resume

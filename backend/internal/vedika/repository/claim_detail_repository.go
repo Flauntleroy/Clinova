@@ -1161,9 +1161,8 @@ func (r *MySQLClaimDetailRepository) GetDigitalDocuments(ctx context.Context, no
 		if err := rows.Scan(&d.ID, &d.NoRawat, &d.Kode, &d.Kategori, &d.LokasiFile); err != nil {
 			continue
 		}
-		// Build file URL for frontend
-		// Example: http://192.168.0.2/webapps/berkasrawat/pages/upload/LP_AHYAR.jpeg
-		d.FileURL = "http://192.168.0.2/webapps/berkasrawat/" + d.LokasiFile
+		// FileURL will be populated by the service layer using dynamic settings
+		d.FileURL = d.LokasiFile
 		docs = append(docs, d)
 	}
 

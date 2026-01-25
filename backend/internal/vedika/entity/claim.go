@@ -134,6 +134,9 @@ type ClaimDetail struct {
 
 	// Status
 	Status ClaimStatus `json:"status"`
+
+	// Configuration
+	LegacyWebAppURL string `json:"legacy_webapp_url,omitempty"`
 }
 
 // ICD10Item represents a master ICD-10 entry.

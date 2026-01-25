@@ -20,6 +20,7 @@ var (
 type SettingsRepository interface {
 	GetActivePeriod(ctx context.Context) (string, error)
 	GetAllowedCarabayar(ctx context.Context) ([]string, error)
+	GetLegacyWebAppURL(ctx context.Context) (string, error)
 }
 
 // MySQLSettingsRepository implements SettingsRepository using MySQL.
@@ -96,4 +97,20 @@ func (r *MySQLSettingsRepository) GetAllowedCarabayar(ctx context.Context) ([]st
 	}
 
 	return carabayar, nil
+}
+
+// GetLegacyWebAppURL returns the base URL for the legacy web application.
+func (r *MySQLSettingsRepository) GetLegacyWebAppURL(ctx context.Context) (string, error) {
+	setting, err := r.getSetting(ctx, "legacy_webapp_url")
+	if err != nil {
+		return "", err
+	}
+
+	// Value is stored as JSON string, e.g., "\"http://192.168.0.3/webapps/berkasrawat/\""
+	var url string
+	if err := json.Unmarshal([]byte(setting.SettingValue), &url); err != nil {
+		return "", fmt.Errorf("invalid legacy_webapp_url format: %w", err)
+	}
+
+	return url, nil
 }

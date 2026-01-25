@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUI } from '../../../context/UIContext';
 import {
     vedikaService,
     type IndexEpisode,
@@ -10,6 +11,45 @@ import authService from '../../../services/authService';
 import DiagnosisModal from './DiagnosisModal';
 import StatusUpdateModal from './StatusUpdateModal';
 import ProcedureModal from './ProcedureModal';
+import DigitalDocModal from './DigitalDocModal';
+import ResumeModal from './ResumeModal';
+
+// Custom Icons
+const IconFileEdit = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+    </svg>
+);
+
+const IconUpload = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+    </svg>
+);
+
+const IconFileText = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+    </svg>
+);
+
+const IconCheckCircle = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>
+);
+
+const IconTrash = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+    </svg>
+);
+
+const IconExternalLink = ({ size = 16, className = "" }) => (
+    <svg width={size} height={size} className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+    </svg>
+);
 
 interface ExpandedRowDetailProps {
     item: IndexEpisode;
@@ -26,12 +66,18 @@ const STATUS_OPTIONS: { value: ClaimStatus; label: string; color: string }[] = [
 
 export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetailProps) {
     // UI State
+    const { confirm, toast } = useUI();
     const [diagnoses, setDiagnoses] = useState<DiagnosisItem[]>([]);
     const [procedures, setProcedures] = useState<ProcedureItem[]>([]);
     const [isLoadingData, setIsLoadingData] = useState(true);
     const [isDiagnosisModalOpen, setIsDiagnosisModalOpen] = useState(false);
     const [isStatusModalOpen, setIsStatusModalOpen] = useState(false);
     const [isProcedureModalOpen, setIsProcedureModalOpen] = useState(false);
+    const [isDigitalDocModalOpen, setIsDigitalDocModalOpen] = useState(false);
+    const [isResumeModalOpen, setIsResumeModalOpen] = useState(false);
+    const [documents, setDocuments] = useState<any[]>([]);
+    const [dokterInfo, setDokterInfo] = useState({ nama: '', kode: '' });
+    const [dynamicUrl, setDynamicUrl] = useState('');
 
     const canEdit = authService.hasPermission('vedika.claim.edit_medical_data');
 
@@ -41,6 +87,14 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
             const detail = await vedikaService.getClaimDetail(item.no_rawat);
             setDiagnoses(detail.data.diagnoses || []);
             setProcedures(detail.data.procedures || []);
+            setDocuments(detail.data.documents || []);
+            if (detail.data.legacy_webapp_url) {
+                setDynamicUrl(detail.data.legacy_webapp_url);
+            }
+            setDokterInfo({
+                nama: detail.data.dokter || '',
+                kode: '' // We don't have doctor code in basic detail yet, but we'll use name
+            });
         } catch (error) {
             console.error('Failed to fetch details:', error);
         } finally {
@@ -51,6 +105,31 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const handleDeleteDocument = async (doc: any) => {
+        const confirmed = await confirm(`Hapus berkas "${doc.nama || doc.kategori}"?`, {
+            title: "Konfirmasi Hapus",
+            variant: "danger",
+            confirmText: "Hapus",
+            cancelText: "Batal"
+        });
+
+        if (!confirmed) return;
+
+        try {
+            await vedikaService.deleteDocument(item.no_rawat, doc.id, doc.file_path);
+            toast("Berkas berhasil dihapus", { type: "success" });
+            fetchData();
+        } catch (error) {
+            console.error('Failed to delete document:', error);
+            toast("Gagal menghapus berkas", { type: "error" });
+        }
+    };
+
+    const handleViewDocument = (path: string) => {
+        const url = `${dynamicUrl}berkasrawat/${path}`;
+        window.open(url, '_blank');
+    };
 
     const currentStatusConfig = STATUS_OPTIONS.find(o => o.value === item.status) || STATUS_OPTIONS[0];
 
@@ -238,19 +317,84 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                         </div>
                     </div>
 
-                    {/* Card 4: Unggah Berkas */}
-                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col">
+                    {/* Card 4: Berkas Digital & Resume */}
+                    <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700 flex flex-col min-h-[220px]">
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">
-                            Unggah Berkas
+                            BERKAS DIGITAL
                         </h4>
 
-                        <div className="flex flex-col items-center justify-center flex-grow text-center py-4">
-                            <svg className="w-6 h-6 mx-auto mb-2 text-gray-300 dark:text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                            </svg>
-                            <p className="text-[10px] text-gray-400 dark:text-gray-500">
-                                Segera hadir:<br />Digital Medical Docs
-                            </p>
+                        <div className="flex-grow space-y-4">
+                            {/* Action Buttons */}
+                            <div className="space-y-2">
+                                <button
+                                    onClick={() => canEdit && setIsResumeModalOpen(true)}
+                                    className="w-full flex items-center justify-between gap-3 p-2.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-300 rounded-xl hover:bg-indigo-100 dark:hover:bg-indigo-900/40 transition-all border border-indigo-100 dark:border-indigo-900/30 group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <IconFileEdit size={16} className="group-hover:scale-110 transition-transform" />
+                                        <span className="text-xs font-bold">Resume Medis</span>
+                                    </div>
+                                    <div className="text-[10px] opacity-70 font-mono tracking-tighter">EDIT</div>
+                                </button>
+
+                                <button
+                                    onClick={() => canEdit && setIsDigitalDocModalOpen(true)}
+                                    className="w-full flex items-center justify-between gap-3 p-2.5 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 rounded-xl hover:bg-blue-100 dark:hover:bg-blue-900/40 transition-all border border-blue-100 dark:border-blue-900/30 group"
+                                >
+                                    <div className="flex items-center gap-2">
+                                        <IconUpload size={16} className="group-hover:scale-110 transition-transform" />
+                                        <span className="text-xs font-bold">Unggah Berkas</span>
+                                    </div>
+                                    <div className="text-[10px] opacity-70 font-mono tracking-tighter text-blue-500">
+                                        {documents.length > 0 ? `${documents.length} FILE` : 'ADD'}
+                                    </div>
+                                </button>
+                            </div>
+
+                            {/* Document Summary List */}
+                            <section>
+                                <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5 border-b border-gray-50 dark:border-gray-700 pb-1 flex justify-between">
+                                    <span>Lampiran Berkas</span>
+                                    {documents.length > 0 && <IconCheckCircle size={10} className="text-green-500" />}
+                                </div>
+                                <div className="space-y-1 max-h-[60px] overflow-y-auto custom-scrollbar">
+                                    {documents.length > 0 ? (
+                                        documents.map((doc, idx) => (
+                                            <div key={idx} className="flex items-center justify-between group/doc py-1 border-b border-gray-50 dark:border-gray-700/50 last:border-0 hover:bg-gray-50 dark:hover:bg-gray-700/30 rounded px-1 transition-colors">
+                                                <div className="flex items-center gap-1.5 min-w-0">
+                                                    <IconFileText size={10} className="shrink-0 text-gray-400" />
+                                                    <span className="truncate text-[10px] text-gray-600 dark:text-gray-400" title={doc.nama || doc.kategori}>
+                                                        {doc.nama || doc.kategori}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-1 opacity-0 group-hover/doc:opacity-100 transition-opacity">
+                                                    <button
+                                                        onClick={() => dynamicUrl && handleViewDocument(doc.file_path)}
+                                                        className={`p-1 rounded transition-colors ${dynamicUrl
+                                                            ? 'hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-500'
+                                                            : 'text-gray-300 dark:text-gray-600 cursor-not-allowed'}`}
+                                                        title={dynamicUrl ? "Lihat Berkas" : "Konfigurasi URL WebApps belum diatur (mera_settings)"}
+                                                        disabled={!dynamicUrl}
+                                                    >
+                                                        <IconExternalLink size={10} />
+                                                    </button>
+                                                    {canEdit && (
+                                                        <button
+                                                            onClick={() => handleDeleteDocument(doc)}
+                                                            className="p-1 hover:bg-red-100 dark:hover:bg-red-900/30 text-red-500 rounded transition-colors"
+                                                            title="Hapus Berkas"
+                                                        >
+                                                            <IconTrash size={10} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="text-[10px] text-gray-400 italic">Belum ada berkas terunggah</div>
+                                    )}
+                                </div>
+                            </section>
                         </div>
                     </div>
                 </div>
@@ -280,6 +424,26 @@ export default function ExpandedRowDetail({ item, onRefresh }: ExpandedRowDetail
                 onClose={() => setIsProcedureModalOpen(false)}
                 noRawat={item.no_rawat}
                 initialProcedures={procedures}
+                onSuccess={fetchData}
+            />
+
+            {/* Digital Document Upload Modal */}
+            <DigitalDocModal
+                isOpen={isDigitalDocModalOpen}
+                onClose={() => setIsDigitalDocModalOpen(false)}
+                noRawat={item.no_rawat}
+                onSuccess={fetchData}
+            />
+
+            {/* View/Delete logic in the card below */}
+
+            {/* Medical Resume Modal */}
+            <ResumeModal
+                isOpen={isResumeModalOpen}
+                onClose={() => setIsResumeModalOpen(false)}
+                noRawat={item.no_rawat}
+                jenis={item.jenis as 'ralan' | 'ranap'}
+                initialDokter={dokterInfo.nama}
                 onSuccess={fetchData}
             />
         </tr>

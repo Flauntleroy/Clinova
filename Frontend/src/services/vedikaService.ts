@@ -1,5 +1,5 @@
 // Vedika Service - API client for Vedika (Verifikasi Digital Klaim BPJS)
-import { API_ENDPOINTS } from '../config/api';
+import { API_ENDPOINTS, API_BASE_URL } from '../config/api';
 import { apiRequest, ApiError } from './authService';
 
 // =============================================================================
@@ -135,6 +135,7 @@ export interface ClaimDetail {
     procedures: ProcedureItem[];
     documents: DocumentItem[];
     status: ClaimStatus;
+    legacy_webapp_url?: string;
 }
 
 export interface ClaimDetailResponse {
@@ -648,7 +649,8 @@ export const vedikaService = {
 
     // Resume (Button click - needs global loading)
     getResume: async (noRawat: string): Promise<ResumeResponse> => {
-        return apiRequest<ResumeResponse>(API_ENDPOINTS.VEDIKA.CLAIM_RESUME(noRawat));
+        const url = API_ENDPOINTS.VEDIKA.CLAIM_RESUME(noRawat);
+        return apiRequest<ResumeResponse>(url);
     },
 
     // Search ICD-10
@@ -681,6 +683,53 @@ export const vedikaService = {
     ): Promise<SuccessMessageResponse> => {
         return apiRequest<SuccessMessageResponse>(API_ENDPOINTS.VEDIKA.CLAIM_PROCEDURE(noRawat), {
             method: 'PUT',
+            body: JSON.stringify(data),
+        });
+    },
+
+    // Get Master Digital Docs
+    getMasterDigitalDocs: async (): Promise<ICD10Item[]> => {
+        const url = `${API_BASE_URL}/admin/vedika/claim/documents/master`;
+        return apiRequest<ICD10SearchResponse>(url, {}, { showGlobalLoading: false }).then(resp => resp.data);
+    },
+
+    // Upload Document
+    uploadDocument: async (
+        noRawat: string,
+        kode: string,
+        file: File
+    ): Promise<SuccessMessageResponse> => {
+        const formData = new FormData();
+        formData.append('kode', kode);
+        formData.append('file', file);
+
+        const url = API_ENDPOINTS.VEDIKA.CLAIM_DOCUMENTS(noRawat);
+        return apiRequest<SuccessMessageResponse>(url, {
+            method: 'POST',
+            body: formData,
+        });
+    },
+
+    // Delete Document
+    deleteDocument: async (
+        noRawat: string,
+        kode: string,
+        path: string
+    ): Promise<SuccessMessageResponse> => {
+        const url = `${API_ENDPOINTS.VEDIKA.CLAIM_DOCUMENTS(noRawat)}?kode=${encodeURIComponent(kode)}&path=${encodeURIComponent(path)}`;
+        return apiRequest<SuccessMessageResponse>(url, {
+            method: 'DELETE',
+        });
+    },
+
+    // Save Resume
+    saveResume: async (
+        noRawat: string,
+        data: Partial<MedicalResume>
+    ): Promise<SuccessMessageResponse> => {
+        const url = API_ENDPOINTS.VEDIKA.CLAIM_RESUME(noRawat);
+        return apiRequest<SuccessMessageResponse>(url, {
+            method: 'POST',
             body: JSON.stringify(data),
         });
     },

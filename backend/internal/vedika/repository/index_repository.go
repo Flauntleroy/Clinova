@@ -42,6 +42,14 @@ type IndexRepository interface {
 	GetDocuments(ctx context.Context, noRawat string) ([]entity.DocumentItem, error)
 	// Get resume
 	GetResume(ctx context.Context, noRawat string) (*entity.MedicalResume, error)
+	// Update resume
+	UpdateResume(ctx context.Context, noRawat string, resume *entity.MedicalResume) error
+	// Get master digital document types
+	GetMasterDigitalDocs(ctx context.Context) ([]entity.ICD10Item, error)
+	// Add digital document record
+	AddDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string) error
+	// Delete digital document record
+	DeleteDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string) error
 }
 
 // MySQLIndexRepository implements IndexRepository.
@@ -707,14 +715,13 @@ func (r *MySQLIndexRepository) SearchICD9(ctx context.Context, query string) ([]
 func (r *MySQLIndexRepository) GetDocuments(ctx context.Context, noRawat string) ([]entity.DocumentItem, error) {
 	rows, err := r.db.QueryContext(ctx, `
 		SELECT 
-			CAST(bdp.no AS CHAR) as id,
-			mbd.nama as nama,
-			mbd.nama as kategori,
+			bdp.kode as id,
+			COALESCE(mbd.nama, bdp.kode) as nama,
+			COALESCE(mbd.nama, bdp.kode) as kategori,
 			bdp.lokasi_file as file_path
 		FROM berkas_digital_perawatan bdp
-		INNER JOIN master_berkas_digital mbd ON bdp.kode = mbd.kode
+		LEFT JOIN master_berkas_digital mbd ON bdp.kode = mbd.kode
 		WHERE bdp.no_rawat = ?
-		ORDER BY bdp.no DESC
 	`, noRawat)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get documents: %w", err)
@@ -758,7 +765,7 @@ func (r *MySQLIndexRepository) GetResume(ctx context.Context, noRawat string) (*
 				COALESCE(pemeriksaan_fisik, ''),
 				COALESCE(diagnosa_utama, ''),
 				COALESCE(obat_pulang, ''),
-				COALESCE(diet_saran, ''),
+				COALESCE(diet, ''),
 				COALESCE(kd_dokter, '')
 			FROM resume_pasien_ranap
 			WHERE no_rawat = ?
@@ -779,10 +786,10 @@ func (r *MySQLIndexRepository) GetResume(ctx context.Context, noRawat string) (*
 		err := r.db.QueryRowContext(ctx, `
 			SELECT 
 				COALESCE(keluhan_utama, ''),
-				COALESCE(pemeriksaan, ''),
-				COALESCE(diagnosa, ''),
-				COALESCE(terapi, ''),
-				COALESCE(catatan, ''),
+				COALESCE(pemeriksaan_penunjang, ''),
+				COALESCE(diagnosa_utama, ''),
+				COALESCE(obat_pulang, ''),
+				COALESCE(jalannya_penyakit, ''),
 				COALESCE(kd_dokter, '')
 			FROM resume_pasien
 			WHERE no_rawat = ?
@@ -800,4 +807,117 @@ func (r *MySQLIndexRepository) GetResume(ctx context.Context, noRawat string) (*
 	}
 
 	return resume, nil
+}
+
+// UpdateResume updates medical resume for an episode.
+func (r *MySQLIndexRepository) UpdateResume(ctx context.Context, noRawat string, resume *entity.MedicalResume) error {
+	statusLanjut, err := r.GetEpisodeType(ctx, noRawat)
+	if err != nil {
+		return fmt.Errorf("failed to get episode type: %w", err)
+	}
+
+	if statusLanjut == "Ranap" {
+		_, err = r.db.ExecContext(ctx, `
+			INSERT INTO resume_pasien_ranap (
+				no_rawat, kd_dokter, diagnosa_awal, alasan, keluhan_utama, pemeriksaan_fisik, 
+				jalannya_penyakit, pemeriksaan_penunjang, hasil_laborat, tindakan_dan_operasi, 
+				obat_di_rs, diagnosa_utama, kd_diagnosa_utama, diagnosa_sekunder, kd_diagnosa_sekunder,
+				diagnosa_sekunder2, kd_diagnosa_sekunder2, diagnosa_sekunder3, kd_diagnosa_sekunder3,
+				diagnosa_sekunder4, kd_diagnosa_sekunder4, prosedur_utama, kd_prosedur_utama,
+				prosedur_sekunder, kd_prosedur_sekunder, prosedur_sekunder2, kd_prosedur_sekunder2,
+				prosedur_sekunder3, kd_prosedur_sekunder3, alergi, diet, lab_belum, edukasi, 
+				cara_keluar, keadaan, dilanjutkan, kontrol, obat_pulang
+			)
+			VALUES (
+				?, ?, '-', '-', ?, ?, 
+				'-', '-', '-', '-', 
+				'-', ?, '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', '-', ?, '-', '-',
+				'Atas Izin Dokter', 'Membaik', 'Kembali Ke RS', CURDATE(), ?
+			)
+			ON DUPLICATE KEY UPDATE kd_dokter = VALUES(kd_dokter), keluhan_utama = VALUES(keluhan_utama), 
+			pemeriksaan_fisik = VALUES(pemeriksaan_fisik), diagnosa_utama = VALUES(diagnosa_utama), 
+			obat_pulang = VALUES(obat_pulang), diet = VALUES(diet)
+		`, noRawat, resume.DokterPJ, resume.KeluhanUtama, resume.PemeriksaanFisik, resume.DiagnosaAkhir, resume.Anjuran, resume.Terapi)
+	} else {
+		// Update resume_pasien
+		_, err = r.db.ExecContext(ctx, `
+			INSERT INTO resume_pasien (
+				no_rawat, kd_dokter, keluhan_utama, jalannya_penyakit, pemeriksaan_penunjang, 
+				hasil_laborat, diagnosa_utama, kd_diagnosa_utama, diagnosa_sekunder, kd_diagnosa_sekunder,
+				diagnosa_sekunder2, kd_diagnosa_sekunder2, diagnosa_sekunder3, kd_diagnosa_sekunder3,
+				diagnosa_sekunder4, kd_diagnosa_sekunder4, prosedur_utama, kd_prosedur_utama,
+				prosedur_sekunder, kd_prosedur_sekunder, prosedur_sekunder2, kd_prosedur_sekunder2,
+				prosedur_sekunder3, kd_prosedur_sekunder3, kondisi_pulang, obat_pulang
+			)
+			VALUES (
+				?, ?, ?, ?, ?, 
+				'-', ?, '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', '-', '-',
+				'-', '-', 'Hidup', ?
+			)
+			ON DUPLICATE KEY UPDATE kd_dokter = VALUES(kd_dokter), keluhan_utama = VALUES(keluhan_utama), 
+			jalannya_penyakit = VALUES(jalannya_penyakit), pemeriksaan_penunjang = VALUES(pemeriksaan_penunjang), 
+			diagnosa_utama = VALUES(diagnosa_utama), obat_pulang = VALUES(obat_pulang)
+		`, noRawat, resume.DokterPJ, resume.KeluhanUtama, resume.Anjuran, resume.PemeriksaanFisik, resume.DiagnosaAkhir, resume.Terapi)
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to update resume: %w", err)
+	}
+
+	return nil
+}
+
+// GetMasterDigitalDocs returns master data for digital documents.
+func (r *MySQLIndexRepository) GetMasterDigitalDocs(ctx context.Context) ([]entity.ICD10Item, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT kode, nama FROM master_berkas_digital ORDER BY nama")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get master digital docs: %w", err)
+	}
+	defer rows.Close()
+
+	var results []entity.ICD10Item
+	for rows.Next() {
+		var item entity.ICD10Item
+		if err := rows.Scan(&item.Kode, &item.Nama); err != nil {
+			return nil, fmt.Errorf("failed to scan master digital doc: %w", err)
+		}
+		results = append(results, item)
+	}
+	return results, nil
+}
+
+// AddDigitalDocument adds a record to berkas_digital_perawatan.
+func (r *MySQLIndexRepository) AddDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string) error {
+	fmt.Printf("DEBUG: Adding document: noRawat=[%s], kode=[%s], lokasiFile=[%s]\n", noRawat, kode, lokasiFile)
+	res, err := r.db.ExecContext(ctx, `
+		INSERT INTO berkas_digital_perawatan (no_rawat, kode, lokasi_file)
+		VALUES (?, ?, ?)
+		ON DUPLICATE KEY UPDATE lokasi_file = VALUES(lokasi_file)
+	`, noRawat, kode, lokasiFile)
+	if err != nil {
+		fmt.Printf("DEBUG: Error adding document: %v\n", err)
+		return fmt.Errorf("failed to add digital document: %w", err)
+	}
+	rows, _ := res.RowsAffected()
+	fmt.Printf("DEBUG: Document added, rows affected: %d\n", rows)
+	return nil
+}
+
+// DeleteDigitalDocument deletes a record from berkas_digital_perawatan.
+func (r *MySQLIndexRepository) DeleteDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string) error {
+	_, err := r.db.ExecContext(ctx, `
+		DELETE FROM berkas_digital_perawatan 
+		WHERE no_rawat = ? AND kode = ? AND lokasi_file = ?
+	`, noRawat, kode, lokasiFile)
+	if err != nil {
+		return fmt.Errorf("failed to delete digital document: %w", err)
+	}
+	return nil
 }

@@ -12,18 +12,21 @@ import (
 // WorkbenchService handles Index workbench business logic.
 // Uses explicit date range filtering, NOT active_period.
 type WorkbenchService struct {
-	indexRepo   repository.IndexRepository
-	auditLogger *audit.Logger
+	indexRepo    repository.IndexRepository
+	settingsRepo repository.SettingsRepository
+	auditLogger  *audit.Logger
 }
 
 // NewWorkbenchService creates a new workbench service.
 func NewWorkbenchService(
 	indexRepo repository.IndexRepository,
+	settingsRepo repository.SettingsRepository,
 	auditLogger *audit.Logger,
 ) *WorkbenchService {
 	return &WorkbenchService{
-		indexRepo:   indexRepo,
-		auditLogger: auditLogger,
+		indexRepo:    indexRepo,
+		settingsRepo: settingsRepo,
+		auditLogger:  auditLogger,
 	}
 }
 
@@ -79,6 +82,12 @@ func (s *WorkbenchService) GetClaimDetail(ctx context.Context, noRawat string, a
 	detail, err := s.indexRepo.GetClaimDetail(ctx, noRawat)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get claim detail: %w", err)
+	}
+
+	// Fetch dynamic legacy webapp URL from settings
+	url, err := s.settingsRepo.GetLegacyWebAppURL(ctx)
+	if err == nil {
+		detail.LegacyWebAppURL = url
 	}
 
 	// Audit log - READ
@@ -326,4 +335,89 @@ func (s *WorkbenchService) GetResume(ctx context.Context, noRawat string, actor 
 	})
 
 	return resume, nil
+}
+
+// UpdateResume updates medical resume.
+func (s *WorkbenchService) UpdateResume(ctx context.Context, noRawat string, req *entity.MedicalResume, actor audit.Actor, ip string) error {
+	if err := s.indexRepo.UpdateResume(ctx, noRawat, req); err != nil {
+		return fmt.Errorf("failed to update resume: %w", err)
+	}
+
+	// Audit log - WRITE
+	s.auditLogger.LogUpdate(audit.UpdateParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "resume",
+			PrimaryKey: map[string]string{"no_rawat": noRawat},
+		},
+		ChangedColumns: map[string]audit.ColumnChange{
+			"resume_data": {Old: "existing", New: "updated"},
+		},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Memperbarui resume medis %s", noRawat),
+	})
+
+	return nil
+}
+
+// GetMasterDigitalDocs returns document categories.
+func (s *WorkbenchService) GetMasterDigitalDocs(ctx context.Context) ([]entity.ICD10Item, error) {
+	return s.indexRepo.GetMasterDigitalDocs(ctx)
+}
+
+// AddDigitalDocument adds a digital document record.
+func (s *WorkbenchService) AddDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string, actor audit.Actor, ip string) error {
+	if err := s.indexRepo.AddDigitalDocument(ctx, noRawat, kode, lokasiFile); err != nil {
+		return fmt.Errorf("failed to add digital document: %w", err)
+	}
+
+	// Audit log - WRITE
+	s.auditLogger.LogInsert(audit.InsertParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "berkas_digital_perawatan",
+			PrimaryKey: map[string]string{"no_rawat": noRawat, "kode": kode},
+		},
+		InsertedData: map[string]interface{}{
+			"no_rawat":    noRawat,
+			"kode":        kode,
+			"lokasi_file": lokasiFile,
+		},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Mengunggah berkas digital %s kategori %s", noRawat, kode),
+	})
+
+	return nil
+}
+
+// DeleteDigitalDocument deletes a digital document record.
+func (s *WorkbenchService) DeleteDigitalDocument(ctx context.Context, noRawat string, kode string, lokasiFile string, actor audit.Actor, ip string) error {
+	if err := s.indexRepo.DeleteDigitalDocument(ctx, noRawat, kode, lokasiFile); err != nil {
+		return fmt.Errorf("failed to delete digital document: %w", err)
+	}
+
+	// Audit log - WRITE
+	s.auditLogger.LogDelete(audit.DeleteParams{
+		Module: "vedika",
+		Entity: audit.Entity{
+			Table:      "berkas_digital_perawatan",
+			PrimaryKey: map[string]string{"no_rawat": noRawat, "kode": kode},
+		},
+		Where:       map[string]interface{}{"no_rawat": noRawat, "kode": kode, "lokasi_file": lokasiFile},
+		BusinessKey: noRawat,
+		Actor:       actor,
+		IP:          ip,
+		Summary:     fmt.Sprintf("Menghapus berkas digital %s kategori %s", noRawat, kode),
+	})
+
+	return nil
+}
+
+// GetLegacyWebAppURL returns the base URL for the legacy web application.
+func (s *WorkbenchService) GetLegacyWebAppURL(ctx context.Context) (string, error) {
+	return s.settingsRepo.GetLegacyWebAppURL(ctx)
 }

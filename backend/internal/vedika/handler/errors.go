@@ -28,5 +28,7 @@ func handleVedikaError(c *gin.Context, err error) {
 	}
 
 	// Generic error
+	// Log to console for easier debugging since we can't see server logs easily
+	println("VEDIKA_ERROR:", err.Error())
 	response.Error(c, http.StatusInternalServerError, "INTERNAL_ERROR", err.Error())
 }

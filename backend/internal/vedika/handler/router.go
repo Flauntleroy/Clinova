@@ -37,7 +37,7 @@ func NewRouter(
 
 	// Initialize services
 	dashboardSvc := vedikaService.NewDashboardService(settingsRepo, dashboardRepo, auditLogger)
-	workbenchSvc := vedikaService.NewWorkbenchService(indexRepo, auditLogger)
+	workbenchSvc := vedikaService.NewWorkbenchService(indexRepo, settingsRepo, auditLogger)
 	claimDetailSvc := vedikaService.NewClaimDetailService(claimDetailRepo, settingsRepo, auditLogger)
 
 	return &Router{
@@ -108,8 +108,17 @@ func (r *Router) RegisterRoutes(engine *gin.Engine, permissionService *service.P
 			// Upload documents (require vedika.claim.upload_document)
 			claim.POST("/documents/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.UploadDocument)
 
+			// Delete documents (require vedika.claim.upload_document)
+			claim.DELETE("/documents/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.DeleteDocument)
+
 			// View resume (require vedika.claim.read_resume)
 			claim.GET("/resume/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.read_resume"), r.workbenchHandler.GetResume)
+
+			// Save resume (require vedika.claim.edit_medical_data)
+			claim.POST("/resume/*no_rawat", r.permMiddleware.RequirePermission("vedika.claim.edit_medical_data"), r.workbenchHandler.SaveResume)
+
+			// Document master data (require vedika.claim.upload_document)
+			claim.GET("/documents/master", r.permMiddleware.RequirePermission("vedika.claim.upload_document"), r.workbenchHandler.GetMasterDigitalDocs)
 		}
 	}
 }
