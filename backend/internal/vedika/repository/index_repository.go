@@ -430,15 +430,28 @@ func (r *MySQLIndexRepository) GetEpisodeStatus(ctx context.Context, noRawat str
 
 // UpdateClaimStatus updates or inserts claim status in mlite_vedika.
 func (r *MySQLIndexRepository) UpdateClaimStatus(ctx context.Context, noRawat string, status entity.ClaimStatus, username string, catatan string) error {
-	// First check if episode exists in reg_periksa
-	var noRkmMedis, tglRegistrasi, jenis string
-	err := r.db.QueryRowContext(ctx, `
-		SELECT no_rkm_medis, DATE(tgl_registrasi), 
+	// 1. Resolve real username if 'username' is actually a UserID (passed by getActor)
+	var realUsername string
+	err := r.db.QueryRowContext(ctx, "SELECT username FROM mera_users WHERE id = ? OR username = ?", username, username).Scan(&realUsername)
+	if err == nil {
+		username = realUsername
+	}
+
+	// 2. Fetch episode metadata from reg_periksa
+	var noRkmMedis, tglRegistrasiRaw, jenis string
+	err = r.db.QueryRowContext(ctx, `
+		SELECT no_rkm_medis, tgl_registrasi, 
 		CASE WHEN status_lanjut = 'Ranap' THEN '1' ELSE '2' END
 		FROM reg_periksa WHERE no_rawat = ?
-	`, noRawat).Scan(&noRkmMedis, &tglRegistrasi, &jenis)
+	`, noRawat).Scan(&noRkmMedis, &tglRegistrasiRaw, &jenis)
 	if err != nil {
 		return fmt.Errorf("episode not found: %w", err)
+	}
+
+	// Ensure tgl_registrasi is strictly YYYY-MM-DD (take first 10 chars)
+	tglRegistrasi := tglRegistrasiRaw
+	if len(tglRegistrasi) > 10 {
+		tglRegistrasi = tglRegistrasi[:10]
 	}
 
 	// Get SEP if exists

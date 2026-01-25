@@ -15,143 +15,161 @@ const SEPSection: React.FC<SEPSectionProps> = ({ data }) => {
     }
 
     return (
-        <div className="bg-white p-8 mb-6 border border-gray-200 print:border-0 print:p-0">
-            {/* Header BPJS */}
-            <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                        BPJS
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-green-700 leading-tight">BPJS Kesehatan</h1>
-                        <p className="text-sm text-gray-600 font-medium">Badan Penyelenggara Jaminan Sosial</p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <h2 className="text-2xl font-bold tracking-widest uppercase">Surat Eligibilitas Peserta</h2>
-                </div>
+        <div className="bg-white mb-6 border border-gray-300 overflow-hidden">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">Surat Eligibilitas Peserta (SEP)</h3>
             </div>
-
-            {/* Barcode Mockup */}
-            <div className="flex justify-center mb-6">
-                <div className="border border-black px-4 py-2 flex flex-col items-center">
-                    <div className="h-10 w-64 bg-black mb-1"></div>
-                    <span className="text-xs font-mono font-bold">{data.no_sep}</span>
-                </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-x-12 gap-y-1 text-sm">
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">No. SEP</span>
-                    <span className="mr-2">:</span>
-                    <span className="font-bold">{data.no_sep}</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Peserta</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.peserta}</span>
+            <div className="p-4 print:p-0 font-sans text-black leading-[1.3]">
+                {/* Header BPJS */}
+                <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center">
+                        <img
+                            src="/images/logo/bpjslogo.png"
+                            alt="BPJS Kesehatan"
+                            className="h-10 w-auto object-contain"
+                        />
+                    </div>
+                    <div className="text-right mr-4">
+                        <h2 className="text-xl font-bold tracking-tight uppercase">
+                            Surat Eligibilitas Peserta
+                        </h2>
+                    </div>
                 </div>
 
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Tgl. SEP</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.tgl_sep}</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">COB</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.cob || '-'}</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">No. Kartu</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.no_kartu} (MR: {data.no_rm})</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Jns. Rawat</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.jenis_pelayanan}</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Nama Peserta</span>
-                    <span className="mr-2">:</span>
-                    <span className="uppercase font-bold">{data.nama_peserta}</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Kls. Rawat</span>
-                    <span className="mr-2">:</span>
-                    <span>Kelas {data.kelas_rawat}</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Tgl. Lahir</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.tgl_lahir} Kelamin: {data.jenis_kelamin}</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Penjamin</span>
-                    <span className="mr-2">:</span>
-                    <span>-</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">No. Telepon</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.no_telp}</span>
-                </div>
-                <div className="flex border-b border-gray-100 py-1 invisible">
-                    <span className="w-32 font-medium"></span>
-                    <span className="mr-2"></span>
-                    <span></span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Sub/Spesialis</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.poli_tujuan}</span>
-                </div>
-                <div className="flex mt-8 col-start-2 row-start-7 row-span-4 justify-end items-end">
-                    <div className="flex flex-col items-center">
-                        <p className="text-[10px] mb-1 italic">Pasien/Keluarga Pasien</p>
-                        <div className="w-20 h-20 border border-black mb-1 p-1">
-                            {/* QR Code Placeholder */}
-                            <div className="w-full h-full bg-[repeating-conic-gradient(#000_0%_25%,#fff_0%_50%)] bg-[length:10px_10px]"></div>
+                {/* Barcode Section - Centered */}
+                <div className="flex flex-col items-center mb-3">
+                    <div className="w-56 h-10 border-x border-black flex items-center justify-center">
+                        <div className="w-[90%] h-full flex gap-[1px] items-stretch py-1">
+                            {[...Array(60)].map((_, i) => (
+                                <div key={i} className={`flex-1 bg-black ${i % 3 === 0 ? 'w-[2px]' : 'w-[1px]'} ${i % 5 === 0 ? 'opacity-0' : ''}`} />
+                            ))}
                         </div>
-                        <p className="text-[10px] font-bold underline uppercase">{data.nama_peserta}</p>
+                    </div>
+                    <span className="text-xs font-mono tracking-widest mt-0.5">{data.no_sep}</span>
+                </div>
+
+                {/* PRB Header */}
+                <div className="mb-1">
+                    <span className="font-bold text-[13px]">PRB :</span>
+                </div>
+
+                <div className="grid grid-cols-[1.5fr_1fr] gap-x-8 text-[11px]">
+                    {/* Left Column */}
+                    <div className="space-y-0.5">
+                        <table className="w-full border-separate border-spacing-y-0.5">
+                            <tbody>
+                                <tr>
+                                    <td className="w-36 align-top">No. SEP</td>
+                                    <td className="w-4 align-top">:</td>
+                                    <td className="font-bold text-[13px]">{data.no_sep}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Tgl. SEP</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.tgl_sep}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">No. Kartu</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.no_kartu} ( MR: {data.no_rm} )</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Nama Peserta</td>
+                                    <td className="align-top">:</td>
+                                    <td className="uppercase">{data.nama_peserta}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Tgl. Lahir</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.tgl_lahir} &nbsp; Kelamin: {data.jenis_kelamin}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">No. Telepon</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.no_telp || ''}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Spesialis/Sub Spesialis</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.poli_tujuan}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">DPJP Yg Melayani</td>
+                                    <td className="align-top">:</td>
+                                    <td className="uppercase">{data.dpjp}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Faskes Perujuk</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.faskes_perujuk}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Diagnosa Awal</td>
+                                    <td className="align-top">:</td>
+                                    <td className="max-w-[300px]">{data.diagnosa_awal}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Catatan</td>
+                                    <td className="align-top">:</td>
+                                    <td className="italic">{data.catatan}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="space-y-0.5">
+                        <table className="w-full border-separate border-spacing-y-0.5">
+                            <tbody>
+                                <tr>
+                                    <td className="w-20 align-top">Peserta</td>
+                                    <td className="w-4 align-top">:</td>
+                                    <td className="font-medium text-[10px] uppercase">{data.peserta}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">COB</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.cob || ''}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Jns. Rawat</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.jenis_pelayanan === '1' ? 'R.Inap' : 'R.Jalan'}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Kls. Rawat</td>
+                                    <td className="align-top">:</td>
+                                    <td>Kelas {data.kelas_rawat}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Penjamin</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.penjamin || ''}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <div className="mt-16 flex flex-col items-center ml-auto w-fit mr-10">
+                            <p className="text-[10px] mb-1">Pasien/Keluarga Pasien</p>
+                            <div className="w-24 h-24 border border-black mb-1 p-0.5">
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`Telah ditandatangani secara elektronik oleh ${data.nama_peserta} pada ${data.tgl_sep}`)}`}
+                                    alt="QR Code Tanda Tangan"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <p className="text-[11px] uppercase">{data.nama_peserta}</p>
+                        </div>
                     </div>
                 </div>
 
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">DPJP Yg Melayani</span>
-                    <span className="mr-2">:</span>
-                    <span className="uppercase">{data.dpjp}</span>
+                <div className="mt-8 text-[9.5px] text-gray-800 leading-[1.2] space-y-0.5">
+                    <p className="italic underline">*Saya Menyetujui BPJS Kesehatan menggunakan informasi Medis Pasien jika diperlukan.</p>
+                    <p className="italic">**SEP bukan sebagai bukti penjaminan peserta</p>
+                    <p>Di-generate pada {new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}</p>
+                    <p>Masa berlaku {data.tgl_sep} s/d {data.batas_rujukan || '-'}</p>
                 </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Faskes Perujuk</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.faskes_perujuk}</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Diagnosa Awal</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.diagnosa_awal}</span>
-                </div>
-
-                <div className="flex border-b border-gray-100 py-1">
-                    <span className="w-32 font-medium">Catatan</span>
-                    <span className="mr-2">:</span>
-                    <span>{data.catatan}</span>
-                </div>
-            </div>
-
-            <div className="mt-8 text-[10px] text-gray-500 italic">
-                <p>* Saya menyetujui BPJS Kesehatan menggunakan informasi medis pasien bila diperlukan.</p>
-                <p>* SEP bukan sebagai bukti penjaminan peserta</p>
-                <p>Cetakan 1: {new Date().toLocaleString('id-ID')}</p>
             </div>
         </div>
     );

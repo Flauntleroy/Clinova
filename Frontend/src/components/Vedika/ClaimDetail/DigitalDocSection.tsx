@@ -10,10 +10,11 @@ const DigitalDocSection: React.FC<DigitalDocSectionProps> = ({ data }) => {
 
     return (
         <div className="space-y-6 mb-6 print:mt-10">
-            <h3 className="text-sm font-bold uppercase border-b-2 border-brand-500 pb-1 text-brand-700 flex justify-between items-center">
-                <span>Lampiran Berkas Digital / Scan Dokumen</span>
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300 rounded-t">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider flex-1">Lampiran Berkas Digital / Scan Dokumen</h3>
                 <span className="text-[10px] font-normal text-gray-400">Total: {data.length} Berkas</span>
-            </h3>
+            </div>
 
             <div className="space-y-8">
                 {data.map((doc, idx) => (
@@ -58,7 +59,16 @@ const DigitalDocSection: React.FC<DigitalDocSectionProps> = ({ data }) => {
                                     alt={doc.kategori}
                                     className="max-w-full h-auto border shadow-lg print:shadow-none bg-white max-h-[800px]"
                                     loading="lazy"
-                                    onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/800x600?text=Berkas+Gambar+Tidak+Ditemukan')}
+                                    onError={(e) => {
+                                        e.currentTarget.classList.add('opacity-0');
+                                        const parent = e.currentTarget.parentElement;
+                                        if (parent) {
+                                            const errorMsg = document.createElement('div');
+                                            errorMsg.className = "p-12 text-center text-gray-400 italic text-xs";
+                                            errorMsg.innerText = "Berkas Gambar Tidak Ditemukan di Server";
+                                            parent.appendChild(errorMsg);
+                                        }
+                                    }}
                                 />
                             )}
                         </div>

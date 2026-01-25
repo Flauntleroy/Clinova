@@ -54,7 +54,6 @@ export default function App() {
               <Route path="/audit-logs" element={<AuditLogs />} />
               <Route path="/vedika" element={<VedikaDashboard />} />
               <Route path="/vedika/index" element={<VedikaIndex />} />
-              <Route path="/vedika/claim/:noRawat" element={<VedikaClaimDetail />} />
               <Route path="/admin/users" element={<UserManagement />} />
               <Route path="/admin/roles" element={<RoleManagement />} />
 
@@ -76,6 +75,13 @@ export default function App() {
               <Route path="/line-chart" element={<LineChart />} />
               <Route path="/bar-chart" element={<BarChart />} />
             </Route>
+
+            {/* Standalone Pages - Protected */}
+            <Route path="/vedika/claim/:noRawat" element={
+              <ProtectedRoute>
+                <VedikaClaimDetail />
+              </ProtectedRoute>
+            } />
 
             {/* Auth Layout - Public */}
             <Route path="/signin" element={<SignIn />} />

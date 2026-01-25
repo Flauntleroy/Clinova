@@ -24,10 +24,10 @@ const OperationSection: React.FC<OperationSectionProps> = ({ ops, reports }) => 
                     </div>
                     {ops.map((op, idx) => (
                         <div key={idx} className="grid grid-cols-12 text-[10px] border-b border-gray-200 last:border-b-0 hover:bg-gray-50 transition-colors">
-                            <div className="col-span-3 border-r border-gray-300 px-3 py-0.5 font-medium">{op.kode_paket}</div>
-                            <div className="col-span-5 border-r border-gray-300 px-3 py-0.5 uppercase">{op.nama_tindakan}</div>
-                            <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-center font-mono">{op.tgl_operasi}</div>
-                            <div className="col-span-2 px-3 py-0.5 text-center">{op.jenis_anastesi}</div>
+                            <div className="col-span-3 border-r border-gray-300 px-3 py-0.5 font-medium">{op?.kode_paket || '-'}</div>
+                            <div className="col-span-5 border-r border-gray-300 px-3 py-0.5 uppercase">{op?.nama_tindakan || '-'}</div>
+                            <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-center font-mono">{op?.tgl_operasi || '-'}</div>
+                            <div className="col-span-2 px-3 py-0.5 text-center">{op?.jenis_anastesi || '-'}</div>
                         </div>
                     ))}
                 </div>
@@ -35,10 +35,16 @@ const OperationSection: React.FC<OperationSectionProps> = ({ ops, reports }) => 
 
             {/* Operation Reports */}
             {hasReports && reports.map((report, idx) => (
-                <div key={idx} className="bg-white border border-gray-300">
-                    <div className="bg-gray-800 text-white px-3 py-1 text-[10px] font-bold uppercase flex justify-between">
-                        <span>Laporan Operasi #{idx + 1}</span>
-                        <span>Operator: {report.dokter_operator}</span>
+                <div key={idx} className="bg-white border border-gray-300 overflow-hidden">
+                    <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                        <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider flex-1">
+                            Laporan Operasi #{idx + 1}
+                            <span className="ml-3 bg-gray-700 px-2 py-0.5 rounded text-[9px] border border-gray-600 font-normal">Op: {report.dokter_operator}</span>
+                        </h3>
+                        <div className="bg-gray-700 px-2 py-0.5 rounded text-[9px] font-medium border border-gray-600 uppercase tracking-tighter">
+                            {report.tanggal} {report.selesai_operasi && `• Selesai: ${report.selesai_operasi}`}
+                        </div>
                     </div>
                     <div className="p-3 text-[10px] space-y-2">
                         <div className="grid grid-cols-12 gap-2">

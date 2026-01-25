@@ -7,7 +7,11 @@ interface MedicineSectionProps {
 
 const MedicineSection: React.FC<MedicineSectionProps> = ({ data }) => {
     return (
-        <div className="bg-white mb-6 border border-gray-300">
+        <div className="bg-white mb-6 border border-gray-300 overflow-hidden">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">Rincian Pemberian Obat & BMHP</h3>
+            </div>
             <div className="grid grid-cols-12 bg-gray-100 border-b border-gray-300 text-[10px] font-bold uppercase">
                 <div className="col-span-1 border-r border-gray-300 px-3 py-1 text-center">No</div>
                 <div className="col-span-4 border-r border-gray-300 px-3 py-1">Nama Obat / BMHP</div>
@@ -26,22 +30,22 @@ const MedicineSection: React.FC<MedicineSectionProps> = ({ data }) => {
                         <div className="col-span-1 border-r border-gray-300 px-3 py-0.5 text-center group">
                             <span className="text-gray-300 group-hover:text-gray-500">{idx + 1}</span>
                         </div>
-                        <div className="col-span-4 border-r border-gray-300 px-3 py-0.5 font-medium uppercase">{item.nama_obat}</div>
-                        <div className="col-span-1 border-r border-gray-300 px-3 py-0.5 text-center">{item.jumlah}</div>
-                        <div className="col-span-1 border-r border-gray-300 px-3 py-0.5 text-center text-[9px]">{item.satuan}</div>
-                        <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 italic">{item.dosis || '-'}</div>
-                        <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-right font-mono">{item.biaya.toLocaleString('id-ID')}</div>
-                        <div className="col-span-1 px-3 py-0.5 text-center text-[9px] text-gray-400">{item.kategori}</div>
+                        <div className="col-span-4 border-r border-gray-300 px-3 py-0.5 font-medium uppercase">{item?.nama_obat || '-'}</div>
+                        <div className="col-span-1 border-r border-gray-300 px-3 py-0.5 text-center">{item?.jumlah || 0}</div>
+                        <div className="col-span-1 border-r border-gray-300 px-3 py-0.5 text-center text-[9px]">{item?.satuan || '-'}</div>
+                        <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 italic">{item?.dosis || '-'}</div>
+                        <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-right font-mono">{(item?.biaya || 0).toLocaleString('id-ID')}</div>
+                        <div className="col-span-1 px-3 py-0.5 text-center text-[9px] text-gray-400">{item?.kategori || '-'}</div>
                     </div>
                 ))
             )}
 
             {/* Total Row */}
-            {data.length > 0 && (
+            {data && data.length > 0 && (
                 <div className="grid grid-cols-12 bg-gray-50 text-[10px] font-bold">
                     <div className="col-span-9 border-r border-gray-300 px-3 py-1 text-right uppercase">Total Biaya Obat</div>
                     <div className="col-span-2 border-r border-gray-300 px-3 py-1 text-right font-mono">
-                        {data.reduce((sum, item) => sum + item.biaya, 0).toLocaleString('id-ID')}
+                        {data.reduce((sum, item) => sum + (item?.biaya || 0), 0).toLocaleString('id-ID')}
                     </div>
                     <div className="col-span-1"></div>
                 </div>

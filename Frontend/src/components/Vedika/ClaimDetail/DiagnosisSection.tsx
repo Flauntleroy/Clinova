@@ -7,7 +7,11 @@ interface DiagnosisSectionProps {
 
 const DiagnosisSection: React.FC<DiagnosisSectionProps> = ({ data }) => {
     return (
-        <div className="bg-white mb-6 border border-gray-300">
+        <div className="bg-white mb-6 border border-gray-300 overflow-hidden">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">Diagnosis (ICD-10)</h3>
+            </div>
             <div className="grid grid-cols-12 bg-gray-100 border-b border-gray-300 text-[10px] font-bold uppercase">
                 <div className="col-span-2 border-r border-gray-300 px-3 py-1">Diagnosa/Penyakit/ICD 10</div>
                 <div className="col-span-2 border-r border-gray-300 px-3 py-1 text-center">Kode</div>

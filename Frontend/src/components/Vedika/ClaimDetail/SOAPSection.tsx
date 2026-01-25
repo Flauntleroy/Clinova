@@ -3,12 +3,16 @@ import { SOAPExamination } from '../../../services/vedikaService';
 
 interface SOAPSectionProps {
     data: SOAPExamination[];
-    jenis: string; // ralan or ranap
+    title: string;
 }
 
-const SOAPSection: React.FC<SOAPSectionProps> = ({ data, jenis }) => {
+const SOAPSection: React.FC<SOAPSectionProps> = ({ data, title }) => {
     return (
         <div className="bg-white mb-6 border border-gray-300 overflow-hidden">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">{title} ({data?.length || 0})</h3>
+            </div>
             <div className="grid grid-cols-12 bg-gray-100 border-b border-gray-300 text-[10px] font-bold text-center uppercase">
                 <div className="col-span-2 border-r border-gray-300 py-1">Tanggal</div>
                 <div className="col-span-1 border-r border-gray-300 py-1">Suhu(C)</div>
@@ -22,14 +26,14 @@ const SOAPSection: React.FC<SOAPSectionProps> = ({ data, jenis }) => {
             </div>
 
             {(!data || data.length === 0) ? (
-                <div className="p-4 text-center text-gray-500 text-xs">Belum ada pemeriksaan {jenis?.toLowerCase() === 'ranap' ? 'rawat inap' : 'rawat jalan'}.</div>
+                <div className="p-4 text-center text-gray-500 text-xs">Belum ada data pemeriksaan SOAP untuk kunjungan ini.</div>
             ) : (
                 data.map((exam, idx) => (
                     <div key={idx} className="border-b border-gray-300 last:border-b-0">
                         {/* Vital Signs Row */}
                         <div className="grid grid-cols-12 text-[10px] border-b border-gray-200">
                             <div className="col-span-2 border-r border-gray-300 p-1 flex items-center justify-center font-bold">
-                                {exam.tgl_perawatan} {exam.jam_rawat}
+                                <div>{exam.tgl_perawatan} {exam.jam_rawat}</div>
                             </div>
                             <div className="col-span-1 border-r border-gray-300 p-1 flex justify-center">{exam.suhu_tubuh || '-'}</div>
                             <div className="col-span-1 border-r border-gray-300 p-1 flex justify-center">{exam.tensi || '-'}</div>

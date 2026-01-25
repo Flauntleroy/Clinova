@@ -8,7 +8,7 @@ import {
     type JenisLayanan,
 } from '../../services/vedikaService';
 import DatePicker from '../../components/form/date-picker';
-import Select from '../../components/form/Select';
+import Combobox from '../../components/ui/Combobox';
 import Label from '../../components/form/Label';
 import StatusUpdateModal from './components/StatusUpdateModal';
 import BatchStatusModal from './components/BatchStatusModal';
@@ -184,7 +184,7 @@ export default function VedikaIndex() {
                                 id="date_range"
                                 mode="range"
                                 defaultDate={[filters.date_from, filters.date_to]}
-                                onChange={(dates) => {
+                                onChange={(dates: Date[] | null) => {
                                     if (dates && dates.length === 2) {
                                         setFilters(prev => ({
                                             ...prev,
@@ -200,7 +200,7 @@ export default function VedikaIndex() {
                         {/* Status */}
                         <div>
                             <Label>Status</Label>
-                            <Select
+                            <Combobox
                                 options={[
                                     { value: 'RENCANA', label: 'Rencana' },
                                     { value: 'PENGAJUAN', label: 'Pengajuan' },
@@ -208,21 +208,25 @@ export default function VedikaIndex() {
                                     { value: 'LENGKAP', label: 'Lengkap' },
                                     { value: 'SETUJU', label: 'Disetujui' },
                                 ]}
-                                defaultValue={filters.claimStatus}
+                                value={filters.claimStatus}
                                 onChange={(value) => handleFilterChange('claimStatus', value as ClaimStatus)}
+                                placeholder="Pilih Status..."
+                                searchPlaceholder="Cari status..."
                             />
                         </div>
 
                         {/* Jenis */}
                         <div>
                             <Label>Jenis Layanan</Label>
-                            <Select
+                            <Combobox
                                 options={[
                                     { value: 'ralan', label: 'Rawat Jalan' },
                                     { value: 'ranap', label: 'Rawat Inap' },
                                 ]}
-                                defaultValue={filters.jenis}
+                                value={filters.jenis}
                                 onChange={(value) => handleFilterChange('jenis', value as JenisLayanan)}
+                                placeholder="Pilih Layanan..."
+                                searchPlaceholder="Cari layanan..."
                             />
                         </div>
 
@@ -395,6 +399,8 @@ export default function VedikaIndex() {
                                                             </button>
                                                             <Link
                                                                 to={`/vedika/claim/${encodeURIComponent(item.no_rawat)}`}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
                                                                 className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                                                             >
                                                                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

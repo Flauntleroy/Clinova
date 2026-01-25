@@ -6,70 +6,117 @@ interface SPRISectionProps {
 }
 
 const SPRISection: React.FC<SPRISectionProps> = ({ data }) => {
-    if (!data) return null;
+    if (!data) {
+        return (
+            <div className="bg-white p-8 mb-4 border border-dashed border-gray-300 text-center text-gray-400 text-xs rounded uppercase tracking-widest font-bold">
+                -- Surat Perintah Rawat Inap (SPRI) Tidak Tersedia --
+            </div>
+        );
+    }
 
     return (
-        <div className="bg-white p-8 mb-6 border border-gray-200 print:border-0 print:p-0">
-            {/* Header BPJS */}
-            <div className="flex justify-between items-start mb-6 border-b-2 border-black pb-4">
-                <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center text-white font-bold text-xl">
-                        BPJS
-                    </div>
-                    <div>
-                        <h1 className="text-xl font-bold text-green-700 leading-tight">BPJS Kesehatan</h1>
-                        <p className="text-sm text-gray-600 font-medium">Badan Penyelenggara Jaminan Sosial</p>
-                    </div>
-                </div>
-                <div className="text-right">
-                    <h2 className="text-lg font-bold tracking-tight uppercase">Surat Perintah Rawat Inap (SPRI)</h2>
-                    <p className="text-xs font-mono">{data.no_surat}</p>
-                </div>
+        <div className="bg-white mb-6 border border-gray-300 overflow-hidden shadow-sm">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">Surat Perintah Rawat Inap (SPRI)</h3>
             </div>
-
-            <div className="space-y-4 text-sm leading-relaxed">
-                <p>Mohon diberikan rawat inap terhadap pasien:</p>
-
-                <div className="grid grid-cols-1 gap-1 ml-4">
-                    <div className="flex">
-                        <span className="w-40">No. Kartu</span>
-                        <span className="mr-2">:</span>
-                        <span className="font-bold">{data.no_kartu}</span>
+            <div className="p-4 print:p-0 font-sans text-black leading-[1.3]">
+                {/* Header BPJS */}
+                <div className="flex justify-between items-center mb-1">
+                    <div className="flex items-center">
+                        <img
+                            src="/images/logo/bpjslogo.png"
+                            alt="BPJS Kesehatan"
+                            className="h-10 w-auto object-contain"
+                        />
                     </div>
-                    <div className="flex">
-                        <span className="w-40">Nama Pasien</span>
-                        <span className="mr-2">:</span>
-                        <span className="font-bold uppercase">{data.nama_pasien}</span>
-                    </div>
-                    <div className="flex">
-                        <span className="w-40">Tgl. Lahir / Kelamin</span>
-                        <span className="mr-2">:</span>
-                        <span>{data.tgl_lahir} / {data.jenis_kelamin}</span>
-                    </div>
-                    <div className="flex">
-                        <span className="w-40">Diagnosa Awal</span>
-                        <span className="mr-2">:</span>
-                        <span>{data.diagnosa_awal}</span>
-                    </div>
-                    <div className="flex">
-                        <span className="w-40">Rencana Inap</span>
-                        <span className="mr-2">:</span>
-                        <span className="font-bold underline">{data.tgl_rencana}</span>
+                    <div className="text-right mr-4">
+                        <h2 className="text-xl font-bold tracking-tight uppercase">
+                            Surat Perintah Rawat Inap
+                        </h2>
                     </div>
                 </div>
 
-                <p className="mt-4">Demikian surat ini dibuat untuk dapat dipergunakan sebagaimana mestinya.</p>
+                {/* Barcode Section - Centered */}
+                <div className="flex flex-col items-center mb-3">
+                    <div className="w-56 h-10 border-x border-black flex items-center justify-center">
+                        <div className="w-[90%] h-full flex gap-[1px] items-stretch py-1">
+                            {[...Array(60)].map((_, i) => (
+                                <div key={i} className={`flex-1 bg-black ${i % 3 === 0 ? 'w-[2px]' : 'w-[1px]'} ${i % 5 === 0 ? 'opacity-0' : ''}`} />
+                            ))}
+                        </div>
+                    </div>
+                    <span className="text-xs font-mono tracking-widest mt-0.5">{data.no_surat}</span>
+                </div>
 
-                <div className="mt-12 flex justify-between items-end">
-                    <div className="text-xs italic text-gray-400">
-                        Dicetak pada: {new Date().toLocaleString('id-ID')}
+                <div className="grid grid-cols-[1.5fr_1fr] gap-x-8 text-[11px]">
+                    {/* Left Column */}
+                    <div className="space-y-0.5">
+                        <table className="w-full border-separate border-spacing-y-0.5">
+                            <tbody>
+                                <tr>
+                                    <td className="w-40 align-top uppercase">Kepada Yth. Dokter</td>
+                                    <td className="w-4 align-top">:</td>
+                                    <td className="font-bold text-[13px] uppercase">{data.nama_dokter}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top uppercase">Di Poliklinik</td>
+                                    <td className="align-top">:</td>
+                                    <td className="uppercase">{data.nama_poli}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top py-2 italic font-bold" colSpan={3}>
+                                        Mohon Pemeriksaan dan Penanganan Lebih Lanjut :
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">No. Kartu</td>
+                                    <td className="align-top">:</td>
+                                    <td className="font-bold text-[13px]">{data.no_kartu}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Nama Pasien</td>
+                                    <td className="align-top">:</td>
+                                    <td className="uppercase font-bold">{data.nama_pasien} &nbsp; ({data.jenis_kelamin})</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Tgl. Lahir</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.tgl_lahir}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Diagnosa Awal</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.diagnosa_awal || '-'}</td>
+                                </tr>
+                                <tr>
+                                    <td className="align-top">Tgl. Entri</td>
+                                    <td className="align-top">:</td>
+                                    <td>{data.tgl_rencana}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <p className="mt-4">Demikian atas bantuannya, diucapkan banyak terima kasih.</p>
                     </div>
-                    <div className="text-center w-64">
-                        <p className="mb-1 text-xs">{new Date().toLocaleDateString('id-ID')}</p>
-                        <p className="mb-16 font-medium">Dokter yang menyetujui,</p>
-                        <p className="font-bold underline uppercase">{data.nama_dokter}</p>
-                        <p className="text-[10px] text-gray-500">Spesialis: {data.nama_poli}</p>
+
+                    {/* Right Column */}
+                    <div className="space-y-0.5">
+                        <div className="mt-16 flex flex-col items-center ml-auto w-fit mr-10">
+                            <p className="text-[10px] mb-1">Mengetahui</p>
+                            <div className="w-24 h-24 border border-black mb-1 p-0.5">
+                                <img
+                                    src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`SPRI No: ${data.no_surat}\nPasien: ${data.nama_pasien}\nDokter: ${data.nama_dokter}`)}`}
+                                    alt="QR Code Tanda Tangan"
+                                    className="w-full h-full object-contain"
+                                />
+                            </div>
+                            <p className="text-[11px] uppercase font-bold">{data.nama_pasien}</p>
+                        </div>
                     </div>
+                </div>
+
+                <div className="mt-8 text-[9.5px] text-gray-800 leading-[1.2] space-y-0.5">
+                    <p>Di-generate pada {new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}</p>
                 </div>
             </div>
         </div>

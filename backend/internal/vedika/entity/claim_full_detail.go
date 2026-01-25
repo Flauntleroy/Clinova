@@ -69,6 +69,7 @@ type PatientRegistration struct {
 	AlamatPJ        string   `json:"alamat_pj"`
 	HubunganPJ      string   `json:"hubungan_pj"`
 	StatusLanjut    string   `json:"status_lanjut"` // Ralan / Ranap
+	BiayaReg        float64  `json:"biaya_reg"`
 }
 
 // =============================================================================
@@ -94,6 +95,7 @@ type SOAPExamination struct {
 	Instruksi    string `json:"instruksi"`
 	Evaluasi     string `json:"evaluasi"`
 	Alergi       string `json:"alergi"`
+	Source       string `json:"source"` // Ralan / Ranap
 }
 
 // =============================================================================
@@ -211,6 +213,41 @@ type LabExam struct {
 	Dokter       string      `json:"dokter"`
 	Biaya        float64     `json:"biaya"`
 	Details      []LabDetail `json:"details"`
+}
+
+// =============================================================================
+// Lab PA (Pathology Anatomy) - Section 6.5
+// =============================================================================
+
+// LabPAReport contains data for a single pathology report.
+type LabPAReport struct {
+	// Header Info
+	NoRM          string `json:"no_rm"`
+	NamaPasien    string `json:"nama_pasien"`
+	JKUmur        string `json:"jk_umur"`
+	Alamat        string `json:"alamat"`
+	NoRawat       string `json:"no_rawat"`
+	NoOrder       string `json:"no_order"`
+	TglPermintaan string `json:"tgl_permintaan"`
+	JamPermintaan string `json:"jam_permintaan"`
+	TglHasil      string `json:"tgl_hasil"`
+	JamHasil      string `json:"jam_hasil"`
+	Poli          string `json:"poli"`
+	NoSediaan     string `json:"no_sediaan"`
+	PemeriksaanPA string `json:"pemeriksaan_pa"` // dari jns_perawatan_lab.nm_perawatan
+
+	// Clinical Info
+	DiagnosaKlinis string `json:"diagnosa_klinis"`
+
+	// Findings
+	Makroskopik string `json:"makroskopik"`
+	Mikroskopik string `json:"mikroskopik"`
+	Kesimpulan  string `json:"kesimpulan"`
+	Kesan       string `json:"kesan"` // Alias for Catatan
+
+	// Doctor / Signature
+	NamaDokter string `json:"nama_dokter"`
+	KdDokter   string `json:"kd_dokter"`
 }
 
 // =============================================================================
@@ -360,52 +397,26 @@ type DigitalDocument struct {
 
 // ClaimFullDetail contains all sections for the complete claim view.
 type ClaimFullDetail struct {
-	// Section 1: SEP
-	SEP *SEPDetail `json:"sep"`
-
-	// Section 2: Patient & Registration
-	Patient PatientRegistration `json:"patient"`
-
-	// Section 2-continued: Diagnoses (from existing entity)
-	Diagnoses []DiagnosisItem `json:"diagnoses"`
-
-	// Section 2-continued: Procedures (from existing entity)
-	Procedures []ProcedureItem `json:"procedures"`
-
-	// Section 2-continued: SOAP Examinations
-	SOAPExams []SOAPExamination `json:"soap_exams"`
-
-	// Section 3: Medical Actions
-	Actions []MedicalAction `json:"actions"`
-
-	// Section 3-continued: Room Stays (for Ranap)
-	RoomStays []RoomStay `json:"room_stays"`
-
-	// Section 4: Operations
-	Operations []OperationItem   `json:"operations"`
-	OpReports  []OperationReport `json:"op_reports"`
-
-	// Section 5: Radiology
-	Radiology RadiologyFullData `json:"radiology"`
-
-	// Section 6: Laboratory
-	LabExams []LabExam `json:"lab_exams"`
-
-	// Section 7: Medicine / Pharmacy
-	Medicines []MedicineItem `json:"medicines"`
-
-	// Section 8: Medical Resume
-	ResumeRalan *MedicalResumeRalan `json:"resume_ralan"`
-	ResumeRanap *MedicalResumeRanap `json:"resume_ranap"`
-
-	// Section 9: Billing
-	Billing *BillingSummary `json:"billing"`
-
-	// Section 10: SPRI
-	SPRI *SPRIDetail `json:"spri"`
-
-	// Section 11-13: Digital Documents
-	Documents []DigitalDocument `json:"documents"`
+	// Sections
+	SEP            *SEPDetail          `json:"sep"`
+	Patient        PatientRegistration `json:"patient"`
+	Diagnoses      []DiagnosisItem     `json:"diagnoses"`
+	Procedures     []ProcedureItem     `json:"procedures"`
+	SOAPExamsRalan []SOAPExamination   `json:"soap_ralan"`
+	SOAPExamsRanap []SOAPExamination   `json:"soap_ranap"`
+	Actions        []MedicalAction     `json:"actions"`
+	RoomStays      []RoomStay          `json:"room_stays"`
+	Operations     []OperationItem     `json:"operations"`
+	OpReports      []OperationReport   `json:"op_reports"`
+	Radiology      RadiologyFullData   `json:"radiology"`
+	LabExams       []LabExam           `json:"lab_exams"`
+	LabPAReports   []LabPAReport       `json:"lab_pa_reports"`
+	Medicines      []MedicineItem      `json:"medicines"`
+	ResumeRalan    *MedicalResumeRalan `json:"resume_ralan"`
+	ResumeRanap    *MedicalResumeRanap `json:"resume_ranap"`
+	Billing        *BillingSummary     `json:"billing"`
+	SPRI           *SPRIDetail         `json:"spri"`
+	Documents      []DigitalDocument   `json:"documents"`
 
 	// Meta
 	StatusLanjut string      `json:"status_lanjut"` // Ralan / Ranap

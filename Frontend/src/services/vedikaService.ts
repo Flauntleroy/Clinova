@@ -164,6 +164,8 @@ export interface SEPDetail {
     tgl_rujukan: string;
     cob: string;
     prb_status: string;
+    penjamin?: string;
+    batas_rujukan?: string;
 }
 
 // Section 2: Patient & Registration
@@ -217,6 +219,7 @@ export interface SOAPExamination {
     instruksi: string;
     evaluasi: string;
     alergi: string;
+    source: 'Ralan' | 'Ranap';
 }
 
 // Section 3: Medical Action
@@ -309,6 +312,30 @@ export interface LabExam {
     dokter: string;
     biaya: number;
     details: LabDetail[];
+}
+
+// Section 6.5: Lab PA (Pathology Anatomy)
+export interface LabPAReport {
+    no_rm: string;
+    nama_pasien: string;
+    jk_umur: string;
+    alamat: string;
+    no_rawat: string;
+    no_order: string;
+    tgl_permintaan: string;
+    jam_permintaan: string;
+    tgl_hasil: string;
+    jam_hasil: string;
+    poli: string;
+    no_sediaan: string;
+    pemeriksaan_pa: string;
+    diagnosa_klinis: string;
+    makroskopik: string;
+    mikroskopik: string;
+    kesimpulan: string;
+    kesan: string;
+    nama_dokter: string;
+    kd_dokter: string;
 }
 
 // Section 7: Medicine / Pharmacy
@@ -433,13 +460,15 @@ export interface ClaimFullDetail {
     patient: PatientRegistration;
     diagnoses: DiagnosisItem[];
     procedures: ProcedureItem[];
-    soap_exams: SOAPExamination[];
+    soap_ralan: SOAPExamination[];
+    soap_ranap: SOAPExamination[];
     actions: MedicalAction[];
     room_stays: RoomStay[];
     operations: OperationItem[];
     op_reports: OperationReport[];
     radiology: RadiologyFullData;
     lab_exams: LabExam[];
+    lab_pa_reports: LabPAReport[];
     medicines: MedicineItem[];
     resume_ralan: MedicalResumeRalan | null;
     resume_ranap: MedicalResumeRanap | null;

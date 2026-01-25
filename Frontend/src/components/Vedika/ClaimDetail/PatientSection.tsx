@@ -7,10 +7,11 @@ interface PatientSectionProps {
 
 const PatientSection: React.FC<PatientSectionProps> = ({ data }) => {
     return (
-        <div className="bg-white p-4 mb-6 border border-gray-200">
-            <h3 className="text-center font-bold text-lg mb-4 uppercase border-b border-black pb-2">
-                SOAP dan Riwayat Perawatan
-            </h3>
+        <div className="bg-white mb-6 border border-gray-300 overflow-hidden">
+            <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                <h3 className="text-xs font-bold uppercase tracking-wider">SOAP dan Riwayat Perawatan</h3>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-1 gap-px bg-gray-300 border border-gray-300">
                 <PatientRow label="No.RM" value={data.no_rm} />

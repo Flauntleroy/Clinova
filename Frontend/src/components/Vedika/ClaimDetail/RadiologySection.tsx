@@ -23,10 +23,10 @@ const RadiologySection: React.FC<RadiologySectionProps> = ({ data }) => {
                     </div>
                     {data.exams.map((exam, idx) => (
                         <div key={idx} className="grid grid-cols-12 text-[10px] border-b border-gray-200 last:border-b-0">
-                            <div className="col-span-3 border-r border-gray-300 px-3 py-0.5">{exam.kode}</div>
-                            <div className="col-span-5 border-r border-gray-300 px-3 py-0.5 uppercase">{exam.nama}</div>
-                            <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-center">{exam.tgl_periksa}</div>
-                            <div className="col-span-2 px-3 py-0.5 text-right font-mono">{exam.biaya.toLocaleString('id-ID')}</div>
+                            <div className="col-span-3 border-r border-gray-300 px-3 py-0.5">{exam?.kode || '-'}</div>
+                            <div className="col-span-5 border-r border-gray-300 px-3 py-0.5 uppercase">{exam?.nama || '-'}</div>
+                            <div className="col-span-2 border-r border-gray-300 px-3 py-0.5 text-center">{exam?.tgl_periksa || '-'}</div>
+                            <div className="col-span-2 px-3 py-0.5 text-right font-mono">{(exam?.biaya || 0).toLocaleString('id-ID')}</div>
                         </div>
                     ))}
                 </div>
@@ -35,9 +35,12 @@ const RadiologySection: React.FC<RadiologySectionProps> = ({ data }) => {
             {/* Interpretation Results */}
             {hasResults && data.results.map((result, idx) => (
                 <div key={idx} className="bg-white border border-gray-300">
-                    <div className="bg-blue-900 text-white px-3 py-1 text-[10px] font-bold uppercase flex justify-between">
-                        <span>Hasil Expertise Radiologi #{idx + 1}</span>
-                        <span>{result.tgl_periksa} {result.jam}</span>
+                    <div className="bg-gray-800 p-2 flex items-center text-white border-b border-gray-300">
+                        <div className="w-1.5 h-3 bg-emerald-500 mr-2 rounded-full"></div>
+                        <h3 className="text-xs font-bold uppercase tracking-wider flex-1">Hasil Expertise Radiologi #{idx + 1}</h3>
+                        <div className="bg-gray-700 px-2 py-0.5 rounded text-[9px] font-medium border border-gray-600">
+                            {result.tgl_periksa} {result.jam}
+                        </div>
                     </div>
                     <div className="p-4 text-[11px] space-y-4">
                         <div className="grid grid-cols-2 gap-8">
@@ -80,7 +83,16 @@ const RadiologySection: React.FC<RadiologySectionProps> = ({ data }) => {
                                                 src={img.startsWith('http') ? img : `/radiologi/${img}`}
                                                 alt={`Hasil Rad ${imgIdx + 1}`}
                                                 className="w-full h-auto object-contain max-h-[300px]"
-                                                onError={(e) => (e.currentTarget.src = 'https://via.placeholder.com/400x300?text=Gambar+Radiologi+Tidak+Ditemukan')}
+                                                onError={(e) => {
+                                                    e.currentTarget.classList.add('hidden');
+                                                    const parent = e.currentTarget.parentElement;
+                                                    if (parent) {
+                                                        const errorMsg = document.createElement('div');
+                                                        errorMsg.className = "py-10 text-center text-gray-400 italic text-xs uppercase bg-gray-50 border border-dashed";
+                                                        errorMsg.innerText = "File Hasil Radiologi Tidak Ditemukan";
+                                                        parent.appendChild(errorMsg);
+                                                    }
+                                                }}
                                             />
                                             <p className="text-[9px] text-center mt-1 text-gray-400 font-mono">{img}</p>
                                         </div>

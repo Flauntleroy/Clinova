@@ -57,9 +57,12 @@
 | 47 | Billing | `billing` | Billing legacy |
 | 48 | Billing | `mlite_billing` | Billing mLite |
 | 49 | Billing | `tambahan_biaya` | Biaya tambahan |
-| 50 | SPRI | `bridging_surat_pri_bpjs` | Surat rawat inap |
+| 50 | SPRI | `bridging_surat_pri_bpjs` | Surat perintah rawat inap |
 | 51 | Berkas | `berkas_digital_perawatan` | Berkas upload |
 | 52 | Berkas | `master_berkas_digital` | Kategori berkas |
+| 53 | Billing | `penjab` | Cara bayar (via reg_periksa) |
+| 54 | Lab PA | `periksa_labpa` | Pemeriksaan PA |
+| 55 | Lab PA | `jns_perawatan_labpa` | Master jenis PA |
 
 ---
 
@@ -401,6 +404,10 @@
 | `nm_poli_bpjs` | VARCHAR(50) | Nama poli BPJS |
 | `diagnosa` | VARCHAR(200) | Diagnosa |
 
+> [!IMPORTANT]
+> **Data Retrieval Note:** 
+> Karena tabel `bridging_surat_pri_bpjs` tidak menyimpan metadata pasien secara lengkap, rujukan data ditarik melalui JOIN ke `reg_periksa` dan `pasien` untuk mendapatkan `nm_pasien`, `tgl_lahir`, dan `jk`.
+
 ---
 
 ### 21. berkas_digital_perawatan
@@ -410,6 +417,25 @@
 | `no_rawat` | VARCHAR(17) | **FK** → reg_periksa |
 | `kode` | VARCHAR(10) | **FK** → master_berkas_digital |
 | `lokasi_file` | VARCHAR(200) | Path file berkas |
+
+---
+
+### 22. periksa_labpa
+
+| Field | Tipe | Keterangan |
+|-------|------|------------|
+| `no_rawat` | VARCHAR(17) | **FK** → reg_periksa |
+| `tgl_periksa` | DATE | Tanggal periksa |
+| `jam` | TIME | Jam periksa |
+| `kd_jenis_prw` | VARCHAR(15) | **FK** → jns_perawatan_labpa |
+| `dokter_perujuk` | VARCHAR(20) | **FK** → dokter (Pengirim) |
+| `kd_dokter` | VARCHAR(20) | **FK** → dokter (Dokter PA) |
+| `diagnosa` | TEXT | Diagnosa klinis |
+| `bahan` | TEXT | Bahan/Jaringan |
+| `makroskopis` | TEXT | Deskripsi Makroskopis |
+| `mikroskopis` | TEXT | Deskripsi Mikroskopis |
+| `kesimpulan` | TEXT | Kesimpulan Hasil |
+| `saran` | TEXT | Saran medis |
 
 ---
 
@@ -482,6 +508,27 @@ JOIN template_laboratorium tl ON tl.id_template = dpl.id_template
 WHERE pl.no_rawat = '2024/01/01/000001';
 ```
 
+### Ambil Hasil Lab PA
+```sql
+SELECT pl.*, jpl.nm_perawatan, d.nm_dokter as pengirim, dp.nm_dokter as dokter_pa
+FROM periksa_labpa pl
+LEFT JOIN jns_perawatan_labpa jpl ON pl.kd_jenis_prw = jpl.kd_jenis_prw
+LEFT JOIN dokter d ON pl.dokter_perujuk = d.kd_dokter
+LEFT JOIN dokter dp ON pl.kd_dokter = dp.kd_dokter
+WHERE pl.no_rawat = '2024/01/01/000001';
+```
+
 ---
 
-*Dokumentasi ini dibuat untuk referensi pengembang dalam memahami struktur data fitur Lihat Data Klaim pada modul Vedika.*
+## 🛡️ Standar Implementasi "Pure Data & Robustness"
+
+Sejak perbaikan fase 5, seluruh komponen **Detail Klaim** wajib mengikuti standar berikut:
+
+1.  **Pure Data Policy**: Tidak boleh ada data placeholder (seperti `Cetakan ke 1`, `.....`, `_____`) atau fallback manual (seperti signature default jika dokter kosong). Jika data di database kosong, UI harus menampilkan state kosong yang bersih atau pesan "Data tidak tersedia".
+2.  **Robust Rendering**: Seluruh komponen wajib menggunakan *Optional Chaining* (`?.`) dan *Null Coalescing* (`|| '-'`) untuk mencegah *Silent Crash* yang dapat menghentikan proses rendering komponen di bawahnya.
+3.  **Indonesian Terbilang**: Backend wajib menghasilkan teks terbilang yang akurat sesuai tata bahasa Indonesia (menangani "sebelas", "seribu", "seratus", dsb) untuk data Billing.
+4.  **Priority Display**: Dokumen resmi BPJS (SPRI dan SEP) diposisikan di paling atas sebagai *Leading Documents* klaim.
+
+---
+
+*Last updated: 2026-01-26 - Vedika Phase 5 Enhancement*

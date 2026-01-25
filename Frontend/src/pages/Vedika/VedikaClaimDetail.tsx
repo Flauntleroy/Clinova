@@ -11,6 +11,7 @@ import RoomSection from '../../components/Vedika/ClaimDetail/RoomSection';
 import OperationSection from '../../components/Vedika/ClaimDetail/OperationSection';
 import RadiologySection from '../../components/Vedika/ClaimDetail/RadiologySection';
 import LabSection from '../../components/Vedika/ClaimDetail/LabSection';
+import LabPASection from '../../components/Vedika/ClaimDetail/LabPASection';
 import MedicineSection from '../../components/Vedika/ClaimDetail/MedicineSection';
 import ResumeSection from '../../components/Vedika/ClaimDetail/ResumeSection';
 import BillingSection from '../../components/Vedika/ClaimDetail/BillingSection';
@@ -55,6 +56,8 @@ const VedikaClaimDetail: React.FC = () => {
                         status_lanjut: response.data.status_lanjut?.toLowerCase() || ''
                     };
                     setData(normalizedData);
+                    console.log('VEDIKA_DEBUG: Full Claim Data Response:', normalizedData);
+                    console.log('VEDIKA_DEBUG: SPRI Section:', normalizedData.spri);
                 } else {
                     setError('Gagal mengambil data klaim.');
                 }
@@ -128,7 +131,7 @@ const VedikaClaimDetail: React.FC = () => {
                         onClick={handlePrint}
                         className="flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium shadow-md transition-all active:scale-95"
                     >
-                        <IconPrinter /> Print Rekam Medis
+                        <IconPrinter /> Cetak
                     </button>
                 </div>
             </div>
@@ -137,14 +140,16 @@ const VedikaClaimDetail: React.FC = () => {
             <main className="max-w-5xl mx-auto p-4 md:p-8">
                 {/* Single Page Print Layout */}
                 <div className="shadow-2xl print:shadow-none bg-white">
-                    {/* Batch 1 sections */}
+                    {/* Official Admission Documents */}
+                    <SPRISection data={data.spri} />
                     <SEPSection data={data.sep} />
 
                     <div className="px-8 pb-8 print:px-0">
                         <PatientSection data={data.patient} />
                         <DiagnosisSection data={data.diagnoses} />
                         <ProcedureSection data={data.procedures} />
-                        <SOAPSection data={data.soap_exams} jenis={data.status_lanjut} />
+                        <SOAPSection data={data.soap_ralan} title="Pemeriksaan Rawat Jalan" />
+                        <SOAPSection data={data.soap_ranap} title="Pemeriksaan Rawat Inap" />
 
                         {/* Batch 2 sections */}
                         <ActionsSection data={data.actions} />
@@ -152,11 +157,11 @@ const VedikaClaimDetail: React.FC = () => {
                         <OperationSection ops={data.operations} reports={data.op_reports} />
                         <RadiologySection data={data.radiology} />
                         <LabSection data={data.lab_exams} />
-                        <SPRISection data={data.spri} />
+                        <LabPASection data={data.lab_pa_reports} />
 
                         {/* Batch 3 sections */}
                         <MedicineSection data={data.medicines} />
-                        <ResumeSection ralan={data.resume_ralan} ranap={data.resume_ranap} jenis={data.status_lanjut} />
+                        <ResumeSection ralan={data.resume_ralan} ranap={data.resume_ranap} />
                         <BillingSection data={data.billing} />
                         <DigitalDocSection data={data.documents} />
 
@@ -165,28 +170,27 @@ const VedikaClaimDetail: React.FC = () => {
                             <div className="grid grid-cols-2 text-[10px]">
                                 <div className="space-y-4">
                                     <div className="italic text-gray-500">
-                                        Dokumen ini dicetak otomatis dari Sistem MERA (Medical Electronic Record Archive)
+                                        Dokumen ini dicetak otomatis dari SIMRS MERA
                                         berdasarkan data rekam medis elektronik RS.
                                     </div>
                                     <div className="font-mono text-gray-400">
                                         Timestamp Cetak: {new Date().toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'medium' })}<br />
-                                        ID Dokumen: {data.patient.no_rawat.replace(/\//g, '')}-{Date.now().toString().slice(-6)}<br />
-                                        Cetakan ke: 1 (Asli)
+                                        {/* ID Dokumen: {data.patient.no_rawat.replace(/\//g, '')}-{Date.now().toString().slice(-6)} */}
                                     </div>
                                 </div>
-                                <div className="text-center">
+                                {/* <div className="text-center">
                                     <p className="font-bold uppercase mb-12">Petunjuk/Dokter Penanggung Jawab</p>
-                                    <p className="font-bold underline">{data.patient.dokter || '( ________________________ )'}</p>
-                                    <p className="text-gray-500">SIP. {data.patient.kd_dokter || '....................'}</p>
-                                </div>
+                                    <p className="font-bold underline">{data.patient.dokter || ''}</p>
+                                    <p className="text-gray-500">{data.patient.kd_dokter ? `SIP. ${data.patient.kd_dokter}` : ''}</p>
+                                </div> */}
                             </div>
 
                             <div className="mt-8 text-center border-t border-dashed border-gray-200 pt-4">
                                 <p className="text-[14px] font-black uppercase text-gray-800 tracking-tighter">
                                     {data.patient.nama_pasien} - {data.patient.no_rm}
                                 </p>
-                                <p className="text-[8px] text-gray-400">
-                                    RSUD/Klinik - Vedika Claim Alignment Phase 5 - MERA System Standard
+                                <p className="text-[8px] text-gray-400 uppercase tracking-widest">
+                                    MERA
                                 </p>
                             </div>
                         </div>
