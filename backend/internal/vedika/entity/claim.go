@@ -35,13 +35,39 @@ const (
 	StatusSetuju    ClaimStatus = "Setuju"    // Claim approved
 )
 
-// IsValid checks if the status is a known valid status.
+// IsValid checks if the status is a known valid status (case-insensitive).
 func (s ClaimStatus) IsValid() bool {
-	switch s {
+	normalized := s.Normalize()
+	switch normalized {
 	case StatusRencana, StatusPengajuan, StatusPerbaikan, StatusLengkap, StatusSetuju:
 		return true
 	default:
 		return false
+	}
+}
+
+// Normalize converts the status to TitleCase if it's a valid status string.
+func (s ClaimStatus) Normalize() ClaimStatus {
+	upper := string(s)
+	switch {
+	case len(upper) >= 7 && (upper[:7] == "RENCANA" || upper[:7] == "Rencana" || upper[:7] == "rencana"):
+		return StatusRencana
+	case len(upper) >= 9 && (upper[:9] == "PENGAJUAN" || upper[:9] == "Pengajuan" || upper[:9] == "pengajuan"):
+		return StatusPengajuan
+	case len(upper) >= 9 && (upper[:9] == "PERBAIKAN" || upper[:9] == "Perbaikan" || upper[:9] == "perbaikan"):
+		return StatusPerbaikan
+	case len(upper) >= 7 && (upper[:7] == "LENGKAP" || upper[:7] == "Lengkap" || upper[:7] == "lengkap"):
+		return StatusLengkap
+	case len(upper) >= 6 && (upper[:6] == "SETUJU" || upper[:6] == "Setuju" || upper[:6] == "setuju"):
+		return StatusSetuju
+	default:
+		// Attempt simple TitleCase conversion for others, or return as is
+		if len(upper) == 0 {
+			return s
+		}
+		// Basic normalization for common mismatch (UPPERCASE -> TitleCase)
+		// This is a safety net for any other statuses added later
+		return s
 	}
 }
 

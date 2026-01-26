@@ -110,9 +110,9 @@ func (s *WorkbenchService) GetClaimDetail(ctx context.Context, noRawat string, a
 	return detail, nil
 }
 
-// UpdateClaimStatus updates the status of a claim.
 func (s *WorkbenchService) UpdateClaimStatus(ctx context.Context, noRawat string, req entity.StatusUpdateRequest, actor audit.Actor, ip string) error {
-	// Validate status
+	// Normalize and validate status
+	req.Status = req.Status.Normalize()
 	if !req.Status.IsValid() {
 		return fmt.Errorf("invalid status: %s", req.Status)
 	}
@@ -145,9 +145,9 @@ func (s *WorkbenchService) UpdateClaimStatus(ctx context.Context, noRawat string
 	return nil
 }
 
-// BatchUpdateClaimStatus updates the status of multiple claims at once.
 func (s *WorkbenchService) BatchUpdateClaimStatus(ctx context.Context, req entity.BatchStatusUpdateRequest, actor audit.Actor, ip string) (*entity.BatchUpdateResult, error) {
-	// Validate status
+	// Normalize and validate status
+	req.Status = req.Status.Normalize()
 	if !req.Status.IsValid() {
 		return nil, fmt.Errorf("invalid status: %s", req.Status)
 	}

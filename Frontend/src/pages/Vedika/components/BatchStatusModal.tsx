@@ -11,11 +11,11 @@ interface BatchStatusModalProps {
 }
 
 const STATUS_OPTIONS: { value: ClaimStatus; label: string; description: string }[] = [
-    { value: 'RENCANA', label: 'Rencana', description: 'Klaim belum diproses' },
-    { value: 'PENGAJUAN', label: 'Pengajuan', description: 'Klaim sedang diajukan' },
-    { value: 'PERBAIKAN', label: 'Perbaikan', description: 'Perlu perbaikan data' },
-    { value: 'LENGKAP', label: 'Lengkap', description: 'Dokumen lengkap' },
-    { value: 'SETUJU', label: 'Disetujui', description: 'Klaim disetujui' },
+    { value: 'Rencana', label: 'Rencana', description: 'Klaim belum diproses' },
+    { value: 'Pengajuan', label: 'Pengajuan', description: 'Klaim sedang diajukan' },
+    { value: 'Perbaikan', label: 'Perbaikan', description: 'Perlu perbaikan data' },
+    { value: 'Lengkap', label: 'Lengkap', description: 'Dokumen lengkap' },
+    { value: 'Setuju', label: 'Disetujui', description: 'Klaim disetujui' },
 ];
 
 export default function BatchStatusModal({
@@ -25,7 +25,7 @@ export default function BatchStatusModal({
     selectedNoRawatList,
     onSuccess,
 }: BatchStatusModalProps) {
-    const [selectedStatus, setSelectedStatus] = useState<ClaimStatus>('PENGAJUAN');
+    const [selectedStatus, setSelectedStatus] = useState<ClaimStatus>('Pengajuan');
     const [catatan, setCatatan] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);

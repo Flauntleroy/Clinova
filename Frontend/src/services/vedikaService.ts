@@ -50,7 +50,7 @@ export interface TrendResponse {
 }
 
 // Index Types
-export type ClaimStatus = 'RENCANA' | 'PENGAJUAN' | 'PERBAIKAN' | 'LENGKAP' | 'SETUJU';
+export type ClaimStatus = 'Rencana' | 'Pengajuan' | 'Perbaikan' | 'Lengkap' | 'Setuju';
 export type JenisLayanan = 'ralan' | 'ranap';
 
 export interface IndexEpisode {
